@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/timetableFragment">
+    <fragment
+        android:id="@+id/timetableFragment"
+        android:name="com.example.kronos.ui.timetable.TimetableFragment"
+        android:label="@string/timetable_title" />
+</navigation>

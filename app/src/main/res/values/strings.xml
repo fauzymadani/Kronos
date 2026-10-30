@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Kronos</string>
+    <string name="timetable_title">Timetable</string>
+    <string name="add_class">Add class</string>
+    <string name="edit_class">Edit class</string>
+    <string name="subject">Subject</string>
+    <string name="subject_color">Subject color</string>
+    <string name="start_time">Start time</string>
+    <string name="end_time">End time</string>
+    <string name="room">Room</string>
+    <string name="teacher">Teacher</string>
+    <string name="notes">Notes</string>
+    <string name="save">Save</string>
+    <string name="delete">Delete</string>
+    <string name="week_number">Week number (0 = every week)</string>
+    <string name="rotation_length">Rotation length</string>
+    <string name="semester_start">Semester start date</string>
+    <string name="settings">Settings</string>
+</resources>
