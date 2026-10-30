@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.example.kronos.data.local.ClassSessionWithSubject
 import java.time.LocalTime
+import java.time.LocalDate
 import kotlin.math.max
 
 class WeekGridView @JvmOverloads constructor(
@@ -18,6 +19,7 @@ class WeekGridView @JvmOverloads constructor(
 ) : View(context, attrs) {
     var onClassClick: ((ClassSessionWithSubject) -> Unit)? = null
     private var sessions: List<ClassSessionWithSubject> = emptyList()
+    private var holidayDates: Set<LocalDate> = emptySet()
     private val blocks = ArrayList<Pair<RectF, ClassSessionWithSubject>>(24)
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFFE0E0E0.toInt()
@@ -42,6 +44,11 @@ class WeekGridView @JvmOverloads constructor(
 
     fun setSessions(value: List<ClassSessionWithSubject>) {
         sessions = value
+        invalidate()
+    }
+
+    fun setHolidays(value: Set<LocalDate>) {
+        holidayDates = value
         invalidate()
     }
 
@@ -92,6 +99,18 @@ class WeekGridView @JvmOverloads constructor(
             blockTextPaint.textAlign = Paint.Align.LEFT
             canvas.drawText(session.subjectName, rect.left + dp(4f), rect.top + dp(16f), blockTextPaint)
             blocks += rect to session
+        }
+        val monday = LocalDate.now().with(java.time.DayOfWeek.MONDAY)
+        val holidayPaint = Paint().apply { color = 0x55757575 }
+        (0..6).forEach { dayIndex ->
+            if (monday.plusDays(dayIndex.toLong()) in holidayDates) {
+                val x = left + dayIndex * columnWidth
+                canvas.drawRect(
+                    x, padding, x + columnWidth,
+                    top + (lastHour - firstHour) * hourHeight,
+                    holidayPaint
+                )
+            }
         }
     }
 

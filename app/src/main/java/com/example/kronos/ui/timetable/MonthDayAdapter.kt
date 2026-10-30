@@ -9,6 +9,8 @@ import java.time.LocalDate
 data class MonthDay(
     val date: LocalDate?,
     val hasClasses: Boolean,
+    val hasHoliday: Boolean,
+    val hasExam: Boolean,
     val selected: Boolean
 )
 
@@ -17,7 +19,13 @@ class MonthDayAdapter(
 ) : RecyclerView.Adapter<MonthDayAdapter.ViewHolder>() {
     private var days: List<MonthDay> = emptyList()
 
-    fun submitMonth(month: LocalDate, classDays: Set<LocalDate>, selected: LocalDate) {
+    fun submitMonth(
+        month: LocalDate,
+        classDays: Set<LocalDate>,
+        examDays: Set<LocalDate>,
+        holidayDays: Set<LocalDate>,
+        selected: LocalDate
+    ) {
         val first = month.withDayOfMonth(1)
         val leading = first.dayOfWeek.value - 1
         val total = ((leading + month.lengthOfMonth() + 6) / 7) * 7
@@ -26,6 +34,8 @@ class MonthDayAdapter(
             MonthDay(
                 date.takeIf { it.month == month.month },
                 date in classDays,
+                date in holidayDays,
+                date in examDays,
                 date == selected
             )
         }
@@ -46,6 +56,10 @@ class MonthDayAdapter(
             binding.dayNumber.text = day.date?.dayOfMonth?.toString().orEmpty()
             binding.dot.visibility =
                 if (day.hasClasses) android.view.View.VISIBLE else android.view.View.INVISIBLE
+            binding.examDot.visibility =
+                if (day.hasExam) android.view.View.VISIBLE else android.view.View.INVISIBLE
+            binding.holidayDot.visibility =
+                if (day.hasHoliday) android.view.View.VISIBLE else android.view.View.INVISIBLE
             binding.root.isSelected = day.selected
             binding.root.setOnClickListener { day.date?.let(onDayClick) }
         }

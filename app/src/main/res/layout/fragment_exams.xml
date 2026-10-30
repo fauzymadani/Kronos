@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:title="@string/exams_title" />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/upcomingList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:padding="12dp" />
+    <TextView
+        android:id="@+id/pastHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp"
+        android:text="@string/past_exams"
+        android:textAppearance="?attr/textAppearanceTitleMedium" />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/pastList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.5"
+        android:clipToPadding="false"
+        android:padding="12dp"
+        android:visibility="gone" />
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/addExam"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_margin="16dp"
+        android:text="@string/add_exam"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        app:icon="@android:drawable/ic_input_add" />
+</LinearLayout>

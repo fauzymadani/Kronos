@@ -19,6 +19,15 @@
         app:tabMode="scrollable"
         app:tabGravity="fill" />
 
+    <TextView
+        android:id="@+id/holidayBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#E0E0E0"
+        android:padding="12dp"
+        android:textColor="#424242"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/classList"
         android:layout_width="match_parent"
@@ -52,6 +61,15 @@
         android:padding="12dp"
         android:visibility="gone"
         tools:listitem="@layout/item_class_session" />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/monthExams"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.35"
+        android:clipToPadding="false"
+        android:padding="12dp"
+        android:visibility="gone"
+        tools:listitem="@layout/item_exam" />
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/addClass"

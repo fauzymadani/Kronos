@@ -13,7 +13,7 @@ import androidx.room.TypeConverters
         Exam::class,
         Holiday::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -22,4 +22,6 @@ abstract class KronosDatabase : RoomDatabase() {
     abstract fun classSessionDao(): ClassSessionDao
     abstract fun taskDao(): TaskDao
     abstract fun categoryDao(): CategoryDao
+    abstract fun examDao(): ExamDao
+    abstract fun holidayDao(): HolidayDao
 }

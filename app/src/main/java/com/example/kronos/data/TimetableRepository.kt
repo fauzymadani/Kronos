@@ -5,12 +5,21 @@ import com.example.kronos.data.local.ClassSessionDao
 import com.example.kronos.data.local.ClassSessionWithSubject
 import com.example.kronos.data.local.Subject
 import com.example.kronos.data.local.SubjectDao
+import com.example.kronos.data.local.Holiday
+import com.example.kronos.data.local.HolidayDao
 import kotlinx.coroutines.flow.Flow
 
 class TimetableRepository(
     private val sessions: ClassSessionDao,
-    private val subjects: SubjectDao
+    private val subjects: SubjectDao,
+    private val holidays: HolidayDao
 ) {
+    fun observeHolidays(): Flow<List<Holiday>> = holidays.observeAll()
+    suspend fun saveHoliday(holiday: Holiday) {
+        if (holiday.id == 0L) holidays.insert(holiday) else holidays.update(holiday)
+    }
+    suspend fun deleteHoliday(holiday: Holiday) = holidays.delete(holiday)
+    suspend fun findHoliday(id: Long): Holiday? = holidays.findById(id)
     fun observeForDay(dayOfWeek: Int, weekNumber: Int): Flow<List<ClassSessionWithSubject>> =
         sessions.observeForDay(dayOfWeek, weekNumber)
 

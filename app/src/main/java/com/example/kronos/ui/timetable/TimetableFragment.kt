@@ -16,6 +16,10 @@ import com.example.kronos.data.ClassPeriod
 import com.example.kronos.data.TimetableRepository
 import com.example.kronos.data.local.ClassSessionWithSubject
 import com.example.kronos.data.local.DatabaseProvider
+import com.example.kronos.data.local.ExamWithSubject
+import com.example.kronos.data.local.Holiday
+import com.example.kronos.lib.isDateInHolidayRange
+import com.example.kronos.ui.exams.ExamAdapter
 import com.example.kronos.databinding.FragmentTimetableBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
@@ -25,6 +29,7 @@ import java.time.YearMonth
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.text.InputType
+import android.widget.TextView
 
 class TimetableFragment : Fragment() {
     private var _binding: FragmentTimetableBinding? = null
@@ -32,7 +37,7 @@ class TimetableFragment : Fragment() {
     private val viewModel: TimetableViewModel by viewModels {
         val database = DatabaseProvider.get(requireContext())
         TimetableViewModel.Factory(
-            TimetableRepository(database.classSessionDao(), database.subjectDao()),
+            TimetableRepository(database.classSessionDao(), database.subjectDao(), database.holidayDao()),
             SettingsStore(requireContext())
         )
     }
@@ -40,6 +45,10 @@ class TimetableFragment : Fragment() {
     private val monthAdapter = MonthDayAdapter(::selectMonthDay)
     private var selectedMonthDay = LocalDate.now()
     private var monthSessions: List<ClassSessionWithSubject> = emptyList()
+    private var monthExams: List<ExamWithSubject> = emptyList()
+    private var holidays: List<Holiday> = emptyList()
+    private var daySessions: List<ClassSessionWithSubject> = emptyList()
+    private val examAdapter = ExamAdapter {}
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         _binding = FragmentTimetableBinding.inflate(inflater, container, false)
@@ -60,15 +69,19 @@ class TimetableFragment : Fragment() {
         }
         binding.classList.layoutManager = LinearLayoutManager(requireContext())
         binding.classList.adapter = adapter
+        applyHolidayState()
         binding.monthGrid.layoutManager = androidx.recyclerview.widget.GridLayoutManager(requireContext(), 7)
         binding.monthGrid.adapter = monthAdapter
         binding.monthClasses.layoutManager = LinearLayoutManager(requireContext())
+        binding.monthExams.layoutManager = LinearLayoutManager(requireContext())
+        binding.monthExams.adapter = examAdapter
         DAYS.forEach { binding.dayTabs.addTab(binding.dayTabs.newTab().setText(it)) }
         binding.dayTabs.getTabAt(0)?.select()
         binding.dayTabs.addOnTabSelectedListener(object :
             com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
                 viewModel.selectDay(tab.position + 1)
+                applyHolidayState()
             }
             override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab) = Unit
             override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab) = Unit
@@ -83,12 +96,30 @@ class TimetableFragment : Fragment() {
         ) { _, result -> handleResult(result) }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.sessions.collect(adapter::submitList) }
+                launch {
+                    viewModel.sessions.collect {
+                        daySessions = it
+                        applyHolidayState()
+                    }
+                }
+                launch {
+                    viewModel.holidays.collect {
+                        holidays = it
+                        applyHolidayState()
+                        refreshMonth()
+                    }
+                }
                 launch {
                     viewModel.weekSessions.collect {
                         monthSessions = it
                         binding.weekGrid.setSessions(it)
                         refreshMonth()
+                    }
+                    launch {
+                        DatabaseProvider.get(requireContext()).examDao().observeAll().collect {
+                            monthExams = it
+                            refreshMonth()
+                        }
                     }
                 }
                 launch {
@@ -105,7 +136,9 @@ class TimetableFragment : Fragment() {
         binding.weekGrid.visibility = View.GONE
         binding.monthGrid.visibility = View.GONE
         binding.monthClasses.visibility = View.GONE
+        binding.monthExams.visibility = View.GONE
         binding.classList.adapter = adapter
+        applyHolidayState()
         binding.toolbar.menu.findItem(R.id.day_view)?.isChecked = true
         binding.toolbar.menu.findItem(R.id.week_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.month_view)?.isChecked = false
@@ -118,7 +151,10 @@ class TimetableFragment : Fragment() {
         binding.weekGrid.visibility = View.GONE
         binding.monthGrid.visibility = View.VISIBLE
         binding.monthClasses.visibility = View.VISIBLE
+        binding.monthExams.visibility = View.VISIBLE
         binding.monthClasses.adapter = adapter
+        applyHolidayState()
+        binding.holidayBanner.visibility = View.GONE
         binding.toolbar.menu.findItem(R.id.day_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.week_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.month_view)?.isChecked = true
@@ -135,10 +171,44 @@ class TimetableFragment : Fragment() {
             .map { month.atDay(it) }
             .filter { it.dayOfWeek.value in classDayNumbers }
             .toSet()
-        monthAdapter.submitMonth(month.atDay(1), classDays, selectedMonthDay)
-        adapter.submitList(monthSessions.filter {
-            it.dayOfWeek == selectedMonthDay.dayOfWeek.value
-        })
+        val examDays = monthExams.mapNotNull { runCatching { LocalDate.parse(it.date) }.getOrNull() }.toSet()
+        val holidayDays = holidays.flatMap { holiday ->
+            generateSequence(holiday.startDate) { current ->
+                current.plusDays(1).takeIf { !it.isAfter(holiday.endDate) }
+            }.toList()
+        }.toSet()
+        monthAdapter.submitMonth(month.atDay(1), classDays, examDays, holidayDays, selectedMonthDay)
+        if (binding.monthGrid.visibility == View.VISIBLE) {
+            adapter.submitList(monthSessions.filter {
+                it.dayOfWeek == selectedMonthDay.dayOfWeek.value
+            }.takeUnless { isHoliday(selectedMonthDay) } ?: emptyList())
+            examAdapter.submitList(monthExams.filter { it.date == selectedMonthDay.toString() })
+        }
+    }
+
+    private fun isHoliday(date: LocalDate): Boolean =
+        holidays.any { isDateInHolidayRange(date, it.startDate, it.endDate) }
+
+    private fun applyHolidayState() {
+        if (_binding == null) return
+        val dayDate = LocalDate.now().with(java.time.DayOfWeek.MONDAY)
+                .plusDays((viewModel.day.value - 1).toLong())
+        val holiday = holidays.firstOrNull { isDateInHolidayRange(
+            dayDate,
+            it.startDate,
+            it.endDate
+        ) }
+        binding.holidayBanner.visibility = if (holiday != null) View.VISIBLE else View.GONE
+        binding.holidayBanner.text = holiday?.name.orEmpty()
+        val holidayDates = holidays.flatMap { holiday ->
+            generateSequence(holiday.startDate) { current ->
+                current.plusDays(1).takeIf { !it.isAfter(holiday.endDate) }
+            }.toList()
+        }.toSet()
+        binding.weekGrid.setHolidays(holidayDates)
+        if (binding.classList.visibility == View.VISIBLE) {
+            adapter.submitList(if (holiday != null) emptyList() else daySessions)
+        }
     }
 
     private fun selectMonthDay(date: LocalDate) {
@@ -153,6 +223,8 @@ class TimetableFragment : Fragment() {
         binding.weekGrid.visibility = View.VISIBLE
         binding.monthGrid.visibility = View.GONE
         binding.monthClasses.visibility = View.GONE
+        binding.monthExams.visibility = View.GONE
+        binding.holidayBanner.visibility = View.GONE
         binding.toolbar.menu.findItem(R.id.day_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.week_view)?.isChecked = true
         binding.toolbar.menu.findItem(R.id.month_view)?.isChecked = false
@@ -205,8 +277,82 @@ class TimetableFragment : Fragment() {
                 }, date.year, date.monthValue - 1, date.dayOfMonth).show()
             }
             .setNeutralButton(R.string.configure_periods) { _, _ -> showPeriodsSettings() }
+            .setNegativeButton(R.string.holidays) { _, _ -> showHolidayManager() }
             .show()
         return true
+    }
+
+    private fun showHolidayManager() {
+        val labels = holidays.map { "${it.name}: ${it.startDate} – ${it.endDate}" }.toMutableList()
+        labels += getString(R.string.add_holiday)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.holidays)
+            .setItems(labels.toTypedArray()) { _, which ->
+                if (which == holidays.size) editHoliday(null) else editHoliday(holidays[which])
+            }
+            .show()
+    }
+
+    private fun editHoliday(existing: Holiday?) {
+        val content = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 8, 48, 0)
+        }
+        val name = EditText(requireContext()).apply {
+            hint = getString(R.string.holiday_name)
+            setText(existing?.name)
+        }
+        val start = TextView(requireContext()).apply { setPadding(0, 20, 0, 20) }
+        val end = TextView(requireContext()).apply { setPadding(0, 20, 0, 20) }
+        var startDate = existing?.startDate ?: LocalDate.now()
+        var endDate = existing?.endDate ?: startDate
+        fun render() {
+            start.text = "${getString(R.string.start_date)}: $startDate"
+            end.text = "${getString(R.string.end_date)}: $endDate"
+        }
+        start.setOnClickListener {
+            android.app.DatePickerDialog(requireContext(), { _, year, month, day ->
+                startDate = LocalDate.of(year, month + 1, day)
+                render()
+            }, startDate.year, startDate.monthValue - 1, startDate.dayOfMonth).show()
+        }
+        end.setOnClickListener {
+            android.app.DatePickerDialog(requireContext(), { _, year, month, day ->
+                endDate = LocalDate.of(year, month + 1, day)
+                render()
+            }, endDate.year, endDate.monthValue - 1, endDate.dayOfMonth).show()
+        }
+        content.addView(name)
+        content.addView(start)
+        content.addView(end)
+        render()
+        val builder = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(if (existing == null) R.string.add_holiday else R.string.edit_holiday)
+            .setView(content)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.save, null)
+        if (existing != null) {
+            builder.setNeutralButton(R.string.delete_holiday) { _, _ ->
+                viewModel.deleteHoliday(existing)
+            }
+        }
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+                val trimmed = name.text.toString().trim()
+                if (trimmed.isEmpty() || endDate.isBefore(startDate)) {
+                    if (endDate.isBefore(startDate)) {
+                        name.error = getString(R.string.holiday_invalid_range)
+                    }
+                    return@setOnClickListener
+                }
+                viewModel.saveHoliday(
+                    Holiday(existing?.id ?: 0L, trimmed, startDate, endDate)
+                )
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
     }
 
     private fun showPeriodsSettings() {

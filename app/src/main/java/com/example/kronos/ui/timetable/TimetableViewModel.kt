@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.kronos.data.TimetableRepository
 import com.example.kronos.data.local.ClassSession
 import com.example.kronos.data.local.ClassSessionWithSubject
+import com.example.kronos.data.local.Holiday
 import com.example.kronos.lib.currentRotationWeek
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +37,9 @@ class TimetableViewModel(
             SharingStarted.WhileSubscribed(5_000),
             emptyList()
         )
+    val holidays: StateFlow<List<Holiday>> = repository.observeHolidays().stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList()
+    )
 
     fun selectDay(dayOfWeek: Int) {
         selectedDay.value = dayOfWeek
@@ -56,8 +60,8 @@ class TimetableViewModel(
         end: java.time.LocalTime,
         room: String?,
         teacher: String?,
-        notes: String?
-        , weekNumber: Int
+        notes: String?,
+        weekNumber: Int
     ) = viewModelScope.launch {
         repository.save(existing, subject, color, dayOfWeek, start, end, room, teacher, notes, weekNumber)
     }
@@ -67,6 +71,9 @@ class TimetableViewModel(
     }
 
     suspend fun findSession(id: Long): ClassSession? = repository.findSession(id)
+    fun saveHoliday(holiday: Holiday) = viewModelScope.launch { repository.saveHoliday(holiday) }
+    fun deleteHoliday(holiday: Holiday) = viewModelScope.launch { repository.deleteHoliday(holiday) }
+    suspend fun findHoliday(id: Long): Holiday? = repository.findHoliday(id)
 
     class Factory(
         private val repository: TimetableRepository,

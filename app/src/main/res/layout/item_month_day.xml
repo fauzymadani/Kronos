@@ -17,4 +17,14 @@
         android:layout_width="4dp"
         android:layout_height="4dp"
         android:background="@drawable/month_dot" />
+    <View
+        android:id="@+id/examDot"
+        android:layout_width="4dp"
+        android:layout_height="4dp"
+        android:background="#D32F2F" />
+    <View
+        android:id="@+id/holidayDot"
+        android:layout_width="4dp"
+        android:layout_height="4dp"
+        android:background="#757575" />
 </LinearLayout>

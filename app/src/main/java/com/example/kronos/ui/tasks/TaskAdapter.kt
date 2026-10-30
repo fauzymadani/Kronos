@@ -11,6 +11,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import androidx.core.graphics.toColorInt
 
 class TaskAdapter(
     private val onClick: (TaskWithSubject) -> Unit,
@@ -34,7 +35,7 @@ class TaskAdapter(
             binding.categoryChip.visibility = if (item.categoryName == null) android.view.View.GONE else android.view.View.VISIBLE
             item.categoryColor?.let { color ->
                 runCatching {
-                    val parsed = Color.parseColor(color)
+                    val parsed = color.toColorInt()
                     binding.categoryChip.setTextColor(parsed)
                     binding.categoryChip.background = GradientDrawable().apply {
                         setColor(Color.argb(0x33, Color.red(parsed), Color.green(parsed), Color.blue(parsed)))

@@ -144,3 +144,60 @@ interface CategoryDao {
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun count(): Int
 }
+
+data class ExamWithSubject(
+    val id: Long,
+    val title: String,
+    val subjectId: Long?,
+    val subjectName: String?,
+    val subjectColor: String?,
+    val date: String,
+    val startTime: String?,
+    val room: String?,
+    val seat: String?,
+    val notes: String?
+)
+
+@Dao
+interface ExamDao {
+    @Query(
+        """
+        SELECT e.id, e.title, e.subjectId, s.name AS subjectName, s.color AS subjectColor,
+               e.date, e.startTime, e.room, e.seat, e.notes
+        FROM exams e
+        LEFT JOIN subjects s ON s.id = e.subjectId
+        ORDER BY e.date ASC, e.startTime ASC
+        """
+    )
+    fun observeAll(): Flow<List<ExamWithSubject>>
+
+    @Insert
+    suspend fun insert(exam: Exam): Long
+
+    @Update
+    suspend fun update(exam: Exam)
+
+    @Delete
+    suspend fun delete(exam: Exam)
+
+    @Query("SELECT * FROM exams WHERE id = :id")
+    suspend fun findById(id: Long): Exam?
+}
+
+@Dao
+interface HolidayDao {
+    @Query("SELECT * FROM holidays ORDER BY startDate, endDate, name")
+    fun observeAll(): Flow<List<Holiday>>
+
+    @Insert
+    suspend fun insert(holiday: Holiday): Long
+
+    @Update
+    suspend fun update(holiday: Holiday)
+
+    @Delete
+    suspend fun delete(holiday: Holiday)
+
+    @Query("SELECT * FROM holidays WHERE id = :id")
+    suspend fun findById(id: Long): Holiday?
+}

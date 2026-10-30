@@ -100,17 +100,18 @@ data class Exam(
     val date: LocalDate,
     val startTime: LocalTime? = null,
     val room: String? = null,
+    val seat: String? = null,
     val notes: String? = null
 )
 
 @Entity(
     tableName = "holidays",
-    indices = [Index(value = ["date"], unique = true)]
+    indices = [Index("startDate"), Index("endDate")]
 )
 data class Holiday(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val date: LocalDate,
-    val endDate: LocalDate? = null,
+    val startDate: LocalDate,
+    val endDate: LocalDate,
     val notes: String? = null
 )
