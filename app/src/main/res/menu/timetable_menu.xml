@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:id="@+id/day_view"
+        android:title="@string/day_view"
+        android:checkable="true"
+        android:checked="true"
+        android:showAsAction="never" />
+    <item
+        android:id="@+id/week_view"
+        android:title="@string/week_view"
+        android:checkable="true"
+        android:showAsAction="never" />
+    <item
         android:id="@+id/settings"
         android:title="@string/settings"
         android:showAsAction="never" />

@@ -52,6 +52,19 @@ interface ClassSessionDao {
     )
     fun observeForDay(dayOfWeek: Int, weekNumber: Int): Flow<List<ClassSessionWithSubject>>
 
+    @Query(
+        """
+        SELECT c.id, c.subjectId, s.name AS subjectName, s.color AS subjectColor,
+               c.dayOfWeek, c.startTime, c.endTime, c.room, c.teacher,
+               c.weekNumber, c.notes
+        FROM class_sessions c
+        INNER JOIN subjects s ON s.id = c.subjectId
+        WHERE c.weekNumber = 0 OR c.weekNumber = :weekNumber
+        ORDER BY c.dayOfWeek ASC, c.startTime ASC
+        """
+    )
+    fun observeForWeek(weekNumber: Int): Flow<List<ClassSessionWithSubject>>
+
     @Insert
     suspend fun insert(session: ClassSession): Long
 

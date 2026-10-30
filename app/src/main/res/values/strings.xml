@@ -16,4 +16,6 @@
     <string name="rotation_length">Rotation length</string>
     <string name="semester_start">Semester start date</string>
     <string name="settings">Settings</string>
+    <string name="day_view">Day view</string>
+    <string name="week_view">Week view</string>
 </resources>

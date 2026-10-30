@@ -30,6 +30,12 @@ class TimetableViewModel(
                 SharingStarted.WhileSubscribed(5_000),
                 emptyList()
             )
+    val weekSessions: StateFlow<List<ClassSessionWithSubject>> =
+        repository.observeForWeek(currentWeek()).stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            emptyList()
+        )
 
     fun selectDay(dayOfWeek: Int) {
         selectedDay.value = dayOfWeek

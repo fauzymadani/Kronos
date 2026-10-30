@@ -14,6 +14,9 @@ class TimetableRepository(
     fun observeForDay(dayOfWeek: Int, weekNumber: Int): Flow<List<ClassSessionWithSubject>> =
         sessions.observeForDay(dayOfWeek, weekNumber)
 
+    fun observeForWeek(weekNumber: Int): Flow<List<ClassSessionWithSubject>> =
+        sessions.observeForWeek(weekNumber)
+
     suspend fun save(
         existing: ClassSession?,
         subjectName: String,

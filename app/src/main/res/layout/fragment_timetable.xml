@@ -28,6 +28,13 @@
         tools:listitem="@layout/item_class_session"
         xmlns:tools="http://schemas.android.com/tools" />
 
+    <com.example.kronos.ui.timetable.WeekGridView
+        android:id="@+id/weekGrid"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
+
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/addClass"
         android:layout_width="wrap_content"

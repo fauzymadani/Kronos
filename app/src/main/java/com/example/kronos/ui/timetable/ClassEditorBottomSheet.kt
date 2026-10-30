@@ -31,6 +31,8 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
         super.onCreate(savedInstanceState)
         dayOfWeek = requireArguments().getInt(ARG_DAY)
         sessionId = requireArguments().getLong(ARG_SESSION)
+        start = requireArguments().getString(ARG_START)?.let(LocalTime::parse) ?: start
+        end = requireArguments().getString(ARG_END)?.let(LocalTime::parse) ?: end
     }
 
     override fun onCreateView(
@@ -172,6 +174,8 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
                         putString(ARG_TEACHER, it.teacher)
                         putString(ARG_NOTES, it.notes)
                         putInt(ARG_WEEK, it.weekNumber)
+                        putString(ARG_START, it.startTime)
+                        putString(ARG_END, it.endTime)
                     }
                 }
             }
