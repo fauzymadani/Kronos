@@ -12,6 +12,11 @@
         android:checkable="true"
         android:showAsAction="never" />
     <item
+        android:id="@+id/month_view"
+        android:title="@string/month_view"
+        android:checkable="true"
+        android:showAsAction="never" />
+    <item
         android:id="@+id/settings"
         android:title="@string/settings"
         android:showAsAction="never" />

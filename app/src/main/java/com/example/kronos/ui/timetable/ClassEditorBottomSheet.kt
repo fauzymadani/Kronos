@@ -1,22 +1,21 @@
 package com.example.kronos.ui.timetable
 
-import android.app.Dialog
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import androidx.core.widget.doAfterTextChanged
+import android.widget.ArrayAdapter
+import androidx.core.graphics.toColorInt
 import androidx.fragment.app.setFragmentResult
 import com.example.kronos.R
-import com.example.kronos.data.local.ClassSession
 import com.example.kronos.databinding.BottomSheetClassBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
 import java.time.LocalTime
+import com.example.kronos.data.SettingsStore
 
 class ClassEditorBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetClassBinding? = null
@@ -26,6 +25,7 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
     private var color = COLORS.first()
     private var start = LocalTime.of(8, 0)
     private var end = LocalTime.of(9, 0)
+    private lateinit var periods: List<com.example.kronos.data.ClassPeriod>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +52,35 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
         binding.teacher.setText(requireArguments().getString(ARG_TEACHER))
         binding.notes.setText(requireArguments().getString(ARG_NOTES))
         binding.weekNumber.setText(requireArguments().getInt(ARG_WEEK, 0).toString())
+        periods = SettingsStore(requireContext()).periods
+        val periodLabels = listOf(getString(R.string.custom_times)) + periods.map {
+            "${it.name}, ${it.start} - ${it.end}"
+        }
+        binding.period.adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            periodLabels
+        )
+        val selectedPeriod = periods.indexOfFirst { it.start == start && it.end == end }
+        binding.period.setSelection(if (selectedPeriod >= 0) selectedPeriod + 1 else 0)
+        binding.period.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: android.widget.AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                if (position > 0) {
+                    periods[position - 1].let {
+                        start = it.start
+                        end = it.end
+                        renderTimes()
+                    }
+                }
+            }
+
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        }
         color = requireArguments().getString(ARG_COLOR) ?: COLORS.first()
         renderTimes()
         COLORS.forEach { addColorButton(it) }
@@ -75,7 +104,7 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
 
     private fun addColorButton(value: String) {
         val button = Button(requireContext()).apply {
-            setBackgroundColor(Color.parseColor(value))
+            setBackgroundColor(value.toColorInt())
             minWidth = 48
             minHeight = 48
             contentDescription = value
@@ -102,6 +131,7 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
                 addOnPositiveButtonClickListener {
                     val selected = LocalTime.of(hour, minute)
                     if (isStart) start = selected else end = selected
+                    binding.period.setSelection(0)
                     renderTimes()
                 }
             }.show(parentFragmentManager, "timePicker")
@@ -160,6 +190,8 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
         private const val ARG_TEACHER = "arg_teacher"
         private const val ARG_NOTES = "arg_notes"
         private const val ARG_WEEK = "arg_week"
+        private const val ARG_START = "arg_start"
+        private const val ARG_END = "arg_end"
         private val COLORS = listOf("#3F51B5", "#008577", "#E91E63", "#FF9800", "#795548", "#607D8B")
 
         fun new(day: Int, item: com.example.kronos.data.local.ClassSessionWithSubject? = null) =

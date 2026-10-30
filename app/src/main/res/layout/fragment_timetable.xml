@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
@@ -25,8 +26,7 @@
         android:layout_weight="1"
         android:clipToPadding="false"
         android:padding="12dp"
-        tools:listitem="@layout/item_class_session"
-        xmlns:tools="http://schemas.android.com/tools" />
+        tools:listitem="@layout/item_class_session" />
 
     <com.example.kronos.ui.timetable.WeekGridView
         android:id="@+id/weekGrid"
@@ -34,6 +34,24 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/monthGrid"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.45"
+        android:padding="4dp"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/monthClasses"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="0.55"
+        android:clipToPadding="false"
+        android:padding="12dp"
+        android:visibility="gone"
+        tools:listitem="@layout/item_class_session" />
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/addClass"
