@@ -9,9 +9,10 @@ import com.example.kronos.data.local.TaskWithSubject
 import com.example.kronos.databinding.ItemTaskBinding
 import java.time.LocalDate
 import java.time.LocalTime
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
-import androidx.core.graphics.toColorInt
+import com.example.kronos.R
+import com.example.kronos.lib.contrastingTextColor
+import com.example.kronos.lib.parseUserColor
 
 class TaskAdapter(
     private val onClick: (TaskWithSubject) -> Unit,
@@ -35,22 +36,25 @@ class TaskAdapter(
             binding.categoryChip.visibility = if (item.categoryName == null) android.view.View.GONE else android.view.View.VISIBLE
             item.categoryColor?.let { color ->
                 runCatching {
-                    val parsed = color.toColorInt()
-                    binding.categoryChip.setTextColor(parsed)
+                    val parsed = parseUserColor(color, binding.root.context.getColor(R.color.secondary))
+                    binding.categoryChip.setTextColor(contrastingTextColor(parsed))
                     binding.categoryChip.background = GradientDrawable().apply {
-                        setColor(Color.argb(0x33, Color.red(parsed), Color.green(parsed), Color.blue(parsed)))
+                        setColor(parsed)
                         cornerRadius = 16f
                     }
                 }
             }
             val overdue = !item.done && item.dueDate?.let { LocalDate.parse(it).isBefore(LocalDate.now()) } == true
             binding.root.alpha = if (overdue) 1f else 0.9f
-            binding.title.setTextColor(if (overdue) 0xFFB00020.toInt() else 0xFF212121.toInt())
+            binding.title.setTextColor(
+                if (overdue) binding.root.context.getColor(R.color.priority_high)
+                else binding.root.context.getColor(R.color.on_surface)
+            )
             binding.priorityIndicator.setBackgroundColor(
                 when (item.priority) {
-                    2 -> 0xFFB00020.toInt()
-                    1 -> 0xFFFF9800.toInt()
-                    else -> 0xFF4CAF50.toInt()
+                    2 -> binding.root.context.getColor(R.color.priority_high)
+                    1 -> binding.root.context.getColor(R.color.priority_medium)
+                    else -> binding.root.context.getColor(R.color.priority_low)
                 }
             )
             binding.done.setOnCheckedChangeListener(null)

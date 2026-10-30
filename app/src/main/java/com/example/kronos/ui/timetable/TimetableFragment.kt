@@ -1,6 +1,7 @@
 package com.example.kronos.ui.timetable
 
 import android.os.Bundle
+import android.content.res.Configuration
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,6 +14,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.kronos.R
 import com.example.kronos.data.SettingsStore
 import com.example.kronos.data.ClassPeriod
+import com.example.kronos.data.ThemeMode
 import com.example.kronos.data.TimetableRepository
 import com.example.kronos.data.local.ClassSessionWithSubject
 import com.example.kronos.data.local.DatabaseProvider
@@ -30,6 +32,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.text.InputType
 import android.widget.TextView
+import com.google.android.material.switchmaterial.SwitchMaterial
 
 class TimetableFragment : Fragment() {
     private var _binding: FragmentTimetableBinding? = null
@@ -64,6 +67,7 @@ class TimetableFragment : Fragment() {
                 R.id.week_view -> showWeekView()
                 R.id.month_view -> showMonthView()
                 R.id.settings -> showSettings()
+                R.id.theme_settings -> showThemeSettings()
                 else -> false
             }
         }
@@ -280,6 +284,64 @@ class TimetableFragment : Fragment() {
             .setNegativeButton(R.string.holidays) { _, _ -> showHolidayManager() }
             .show()
         return true
+    }
+
+    private fun showThemeSettings(): Boolean {
+        val settings = SettingsStore(requireContext())
+        val modes = arrayOf(
+            getString(R.string.theme_light),
+            getString(R.string.theme_dark),
+            getString(R.string.theme_auto_battery)
+        )
+        val selected = when (settings.themeMode) {
+            ThemeMode.LIGHT -> 0
+            ThemeMode.DARK -> 1
+            ThemeMode.AUTO_BATTERY -> 2
+        }
+        val content = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 0, 48, 0)
+        }
+        val amoled = SwitchMaterial(requireContext()).apply {
+            text = getString(R.string.pure_black)
+            isChecked = settings.pureBlack
+            setPadding(0, 12, 0, 12)
+        }
+        content.addView(amoled)
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.theme_settings)
+            .setSingleChoiceItems(modes, selected) { dialogInterface, which ->
+                settings.themeMode = ThemeMode.values()[which]
+                dialogInterface.dismiss()
+                recreateForTheme()
+            }
+            .setView(content)
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+        amoled.setOnCheckedChangeListener { _, checked ->
+            settings.pureBlack = checked
+            if (settings.themeMode == ThemeMode.DARK ||
+                (settings.themeMode == ThemeMode.AUTO_BATTERY &&
+                    (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                    Configuration.UI_MODE_NIGHT_YES)
+            ) {
+                dialog.dismiss()
+                recreateForTheme()
+            }
+        }
+        dialog.show()
+        return true
+    }
+
+    private fun recreateForTheme() {
+        val mode = when (SettingsStore(requireContext()).themeMode) {
+            ThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            ThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            ThemeMode.AUTO_BATTERY -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY
+        }
+        val modeChanged = androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode() != mode
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+        if (!modeChanged) requireActivity().recreate()
     }
 
     private fun showHolidayManager() {

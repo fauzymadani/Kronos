@@ -1,6 +1,6 @@
 package com.example.kronos.ui.exams
 
-import android.graphics.Color
+import com.example.kronos.lib.parseUserColor
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -23,7 +23,9 @@ class ExamAdapter(private val onClick: (ExamWithSubject) -> Unit) :
         fun bind(item: ExamWithSubject) {
             binding.subject.text = item.subjectName ?: item.title
             item.subjectColor?.let {
-                runCatching { binding.subject.setTextColor(Color.parseColor(it)) }
+                binding.subject.setTextColor(
+                    parseUserColor(it, binding.root.context.getColor(R.color.primary))
+                )
             }
             val days = ChronoUnit.DAYS.between(LocalDate.now(), LocalDate.parse(item.date))
             binding.countdown.text = when (days) {

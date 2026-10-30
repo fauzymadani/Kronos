@@ -21,10 +21,10 @@
         android:id="@+id/examDot"
         android:layout_width="4dp"
         android:layout_height="4dp"
-        android:background="#D32F2F" />
+        android:background="@color/exam_dot" />
     <View
         android:id="@+id/holidayDot"
         android:layout_width="4dp"
         android:layout_height="4dp"
-        android:background="#757575" />
+        android:background="@color/holiday_dot" />
 </LinearLayout>

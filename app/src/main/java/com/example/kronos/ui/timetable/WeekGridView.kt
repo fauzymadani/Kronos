@@ -2,13 +2,15 @@ package com.example.kronos.ui.timetable
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import com.example.kronos.data.local.ClassSessionWithSubject
+import com.example.kronos.R
+import com.example.kronos.lib.contrastingTextColor
+import com.example.kronos.lib.parseUserColor
 import java.time.LocalTime
 import java.time.LocalDate
 import kotlin.math.max
@@ -22,15 +24,15 @@ class WeekGridView @JvmOverloads constructor(
     private var holidayDates: Set<LocalDate> = emptySet()
     private val blocks = ArrayList<Pair<RectF, ClassSessionWithSubject>>(24)
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFE0E0E0.toInt()
+        color = context.getColor(R.color.grid_line)
         strokeWidth = dp(1f)
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF424242.toInt()
+        color = context.getColor(R.color.on_surface)
         textSize = dp(12f)
     }
     private val blockTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = context.getColor(R.color.on_primary)
         textSize = dp(12f)
     }
     private val blockPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -94,14 +96,15 @@ class WeekGridView @JvmOverloads constructor(
                 left + (dayIndex + 1) * columnWidth - dp(2f),
                 minOf(bottom, height.toFloat() - dp(2f))
             )
-            blockPaint.color = parseColor(session.subjectColor)
+            blockPaint.color = parseUserColor(session.subjectColor, context.getColor(R.color.primary))
+            blockTextPaint.color = contrastingTextColor(blockPaint.color)
             canvas.drawRoundRect(rect, dp(4f), dp(4f), blockPaint)
             blockTextPaint.textAlign = Paint.Align.LEFT
             canvas.drawText(session.subjectName, rect.left + dp(4f), rect.top + dp(16f), blockTextPaint)
             blocks += rect to session
         }
         val monday = LocalDate.now().with(java.time.DayOfWeek.MONDAY)
-        val holidayPaint = Paint().apply { color = 0x55757575 }
+        val holidayPaint = Paint().apply { color = context.getColor(R.color.holiday_overlay) }
         (0..6).forEach { dayIndex ->
             if (monday.plusDays(dayIndex.toLong()) in holidayDates) {
                 val x = left + dayIndex * columnWidth
@@ -122,9 +125,6 @@ class WeekGridView @JvmOverloads constructor(
         }
         return true
     }
-
-    private fun parseColor(value: String?): Int =
-        runCatching { Color.parseColor(value) }.getOrDefault(0xFF607D8B.toInt())
 
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
 }

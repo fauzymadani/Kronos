@@ -1,6 +1,7 @@
 package com.example.kronos.ui.timetable
 
-import android.graphics.Color
+import com.example.kronos.lib.parseUserColor
+import com.example.kronos.R
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -35,7 +36,9 @@ class ClassSessionAdapter(
             binding.details.visibility =
                 if (binding.details.text.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
             item.subjectColor?.let {
-                runCatching { binding.subject.setTextColor(Color.parseColor(it)) }
+                binding.subject.setTextColor(
+                    parseUserColor(it, binding.root.context.getColor(R.color.primary))
+                )
             }
             binding.root.setOnClickListener { onClick(item) }
         }

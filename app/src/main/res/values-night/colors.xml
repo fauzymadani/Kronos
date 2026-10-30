@@ -1,0 +1,18 @@
+<resources>
+    <color name="primary">#B8C2FF</color>
+    <color name="on_primary">#17205E</color>
+    <color name="secondary">#6EDBC4</color>
+    <color name="on_secondary">#00382F</color>
+    <color name="background">#FF121212</color>
+    <color name="surface">#FF1E1E1E</color>
+    <color name="on_surface">#FFE6E1E5</color>
+    <color name="amoled_background">#FF000000</color>
+    <color name="amoled_surface">#FF121212</color>
+    <color name="grid_line">#FF454545</color>
+    <color name="holiday_overlay">#55757575</color>
+    <color name="exam_dot">#FFFF8A80</color>
+    <color name="holiday_dot">#FFBDBDBD</color>
+    <color name="priority_high">#FFFF8A80</color>
+    <color name="priority_medium">#FFFFB74D</color>
+    <color name="priority_low">#FF81C784</color>
+</resources>

@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="primary">#3F51B5</color>
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="secondary">#008577</color>
+    <color name="on_secondary">#FFFFFFFF</color>
+    <color name="background">#FFFBFE</color>
+    <color name="surface">#FFFFFFFF</color>
+    <color name="on_surface">#FF1C1B1F</color>
+    <color name="amoled_background">#FF000000</color>
+    <color name="amoled_surface">#FF121212</color>
+    <color name="grid_line">#FFD0D0D0</color>
+    <color name="holiday_overlay">#33757575</color>
+    <color name="exam_dot">#FFD32F2F</color>
+    <color name="holiday_dot">#FF757575</color>
+    <color name="priority_high">#FFB00020</color>
+    <color name="priority_medium">#FFFF9800</color>
+    <color name="priority_low">#FF4CAF50</color>
 </resources>

@@ -23,6 +23,7 @@ import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import androidx.core.graphics.toColorInt
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -231,10 +232,47 @@ class TasksFragment : Fragment() {
         }
         val color = android.widget.EditText(requireContext()).apply {
             hint = getString(R.string.category_color)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
+            setSingleLine(true)
             setText(category?.color ?: "#607D8B")
+        }
+        val colorHelp = android.widget.TextView(requireContext()).apply {
+            text = getString(R.string.category_color_help)
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+            setPadding(0, 4, 0, 12)
+        }
+        val presets = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 12)
+        }
+        listOf(
+            R.string.color_purple to "#7E57C2",
+            R.string.color_blue to "#42A5F5",
+            R.string.color_green to "#66BB6A",
+            R.string.color_orange to "#FFA726",
+            R.string.color_red to "#EF5350"
+        ).forEach { (label, value) ->
+            val chip = Chip(requireContext()).apply {
+                text = getString(label)
+                isCheckable = false
+                setOnClickListener { color.setText(value) }
+            }
+            presets.addView(
+                chip,
+                android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = 4 }
+            )
+        }
+        val presetScroll = android.widget.HorizontalScrollView(requireContext()).apply {
+            isHorizontalScrollBarEnabled = false
+            addView(presets)
         }
         layout.addView(name)
         layout.addView(color)
+        layout.addView(colorHelp)
+        layout.addView(presetScroll)
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(if (category == null) R.string.add_category else R.string.edit_category)
             .setView(layout)
@@ -248,10 +286,13 @@ class TasksFragment : Fragment() {
             shown.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
                 val value = name.text.toString().trim()
                 val colorValue = color.text.toString().trim()
-                val validColor = runCatching { android.graphics.Color.parseColor(colorValue) }.isSuccess
+                val validColor = runCatching { colorValue.toColorInt() }.isSuccess
                 if (value.isEmpty() || !validColor) {
-                    name.error = if (value.isEmpty()) getString(R.string.required)
-                    else getString(R.string.invalid_color)
+                    if (value.isEmpty()) {
+                        name.error = getString(R.string.required)
+                    } else {
+                        color.error = getString(R.string.invalid_color)
+                    }
                 } else {
                     viewModel.saveCategory(
                         category?.copy(name = value, color = colorValue)

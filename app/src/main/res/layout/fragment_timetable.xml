@@ -23,9 +23,9 @@
         android:id="@+id/holidayBanner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#E0E0E0"
+        android:background="?attr/colorSurfaceVariant"
         android:padding="12dp"
-        android:textColor="#424242"
+        android:textColor="?attr/colorOnSurface"
         android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
