@@ -34,6 +34,9 @@ interface SubjectDao {
 
     @Update
     suspend fun update(subject: Subject)
+
+    @Query("SELECT * FROM subjects ORDER BY name")
+    fun observeAll(): Flow<List<Subject>>
 }
 
 @Dao
@@ -76,4 +79,68 @@ interface ClassSessionDao {
 
     @Delete
     suspend fun delete(session: ClassSession)
+}
+
+data class TaskWithSubject(
+    val id: Long,
+    val title: String,
+    val notes: String?,
+    val dueDate: String?,
+    val dueTime: String?,
+    val subjectId: Long?,
+    val subjectName: String?,
+    val categoryId: Long?,
+    val categoryName: String?,
+    val categoryColor: String?,
+    val priority: Int,
+    val done: Boolean
+)
+
+@Dao
+interface TaskDao {
+    @Query(
+        """
+        SELECT t.id, t.title, t.notes, t.dueDate, t.dueTime, t.subjectId,
+               s.name AS subjectName, t.categoryId, c.name AS categoryName,
+               c.color AS categoryColor, t.priority, t.done
+        FROM tasks t
+        LEFT JOIN subjects s ON s.id = t.subjectId
+        LEFT JOIN categories c ON c.id = t.categoryId
+        ORDER BY t.done ASC, t.dueDate IS NULL, t.dueDate ASC, t.dueTime ASC, t.priority DESC
+        """
+    )
+    fun observeAll(): Flow<List<TaskWithSubject>>
+
+    @Insert
+    suspend fun insert(task: Task): Long
+
+    @Update
+    suspend fun update(task: Task)
+
+    @Query("SELECT * FROM tasks WHERE id = :id")
+    suspend fun findById(id: Long): Task?
+
+    @Delete
+    suspend fun delete(task: Task)
+
+    @Query("UPDATE tasks SET done = :done WHERE id = :id")
+    suspend fun setDone(id: Long, done: Boolean)
+}
+
+@Dao
+interface CategoryDao {
+    @Query("SELECT * FROM categories ORDER BY name")
+    fun observeAll(): Flow<List<Category>>
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.IGNORE)
+    suspend fun insert(category: Category): Long
+
+    @Update
+    suspend fun update(category: Category)
+
+    @Delete
+    suspend fun delete(category: Category)
+
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun count(): Int
 }

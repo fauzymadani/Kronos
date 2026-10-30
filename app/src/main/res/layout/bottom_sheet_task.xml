@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
+        <TextView android:id="@+id/header" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/add_task" android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/task_title" />
+        <com.google.android.material.textfield.TextInputEditText android:id="@+id/notes" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/notes" android:inputType="textMultiLine" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/dueDate" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/due_date" />
+        <com.google.android.material.button.MaterialButton android:id="@+id/dueTime" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/due_time" />
+        <Spinner android:id="@+id/subject" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <Spinner android:id="@+id/category" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <Spinner android:id="@+id/priority" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <CheckBox android:id="@+id/done" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/done" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="end">
+            <com.google.android.material.button.MaterialButton android:id="@+id/delete" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/delete" />
+            <com.google.android.material.button.MaterialButton android:id="@+id/save" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/save" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

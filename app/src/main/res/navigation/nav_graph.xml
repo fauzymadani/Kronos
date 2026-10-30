@@ -7,4 +7,8 @@
         android:id="@+id/timetableFragment"
         android:name="com.example.kronos.ui.timetable.TimetableFragment"
         android:label="@string/timetable_title" />
+    <fragment
+        android:id="@+id/tasksFragment"
+        android:name="com.example.kronos.ui.tasks.TasksFragment"
+        android:label="@string/tasks_title" />
 </navigation>

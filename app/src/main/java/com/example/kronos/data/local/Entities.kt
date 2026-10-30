@@ -73,6 +73,7 @@ data class Task(
     val title: String,
     val notes: String? = null,
     val dueDate: LocalDate? = null,
+    val dueTime: LocalTime? = null,
     val subjectId: Long? = null,
     val categoryId: Long? = null,
     val priority: Int = 0,
