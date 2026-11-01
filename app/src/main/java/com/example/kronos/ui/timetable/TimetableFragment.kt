@@ -15,6 +15,8 @@ import com.example.kronos.R
 import com.example.kronos.data.SettingsStore
 import com.example.kronos.data.ClassPeriod
 import com.example.kronos.data.ThemeMode
+import com.example.kronos.data.FirstDayOfWeek
+import com.example.kronos.data.TimeFormat
 import com.example.kronos.data.TimetableRepository
 import com.example.kronos.data.local.ClassSessionWithSubject
 import com.example.kronos.data.local.DatabaseProvider
@@ -23,6 +25,9 @@ import com.example.kronos.data.local.Holiday
 import com.example.kronos.notifications.ClassReminderScheduler
 import com.example.kronos.notifications.TaskExamReminderScheduler
 import com.example.kronos.lib.isDateInHolidayRange
+import com.example.kronos.lib.displayWeekdayLabels
+import com.example.kronos.lib.startOfDisplayedWeek
+import com.example.kronos.lib.formatDisplayDate
 import com.example.kronos.ui.exams.ExamAdapter
 import com.example.kronos.databinding.FragmentTimetableBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -38,6 +43,14 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import com.google.android.material.switchmaterial.SwitchMaterial
+import androidx.activity.result.contract.ActivityResultContracts
+import com.example.kronos.data.BackupJsonCodec
+import com.example.kronos.data.BackupRepository
+import com.example.kronos.data.BackupValidationException
+import com.example.kronos.lib.classesCsv
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import java.io.OutputStreamWriter
 
 class TimetableFragment : Fragment() {
     private var _binding: FragmentTimetableBinding? = null
@@ -59,12 +72,42 @@ class TimetableFragment : Fragment() {
     private var daySessions: List<ClassSessionWithSubject> = emptyList()
     private val examAdapter = ExamAdapter {}
     private val reminderScheduler get() = ClassReminderScheduler(requireContext())
+    private val createBackup = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri -> if (uri != null) exportBackup(uri) }
+    private val openBackup = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) readBackup(uri) }
+    private val createClassesCsv = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri -> if (uri != null) exportClassesCsv(uri) }
 
     fun selectReminderDay(day: Int) {
         if (day in 1..7 && _binding != null) {
-            binding.dayTabs.getTabAt(day - 1)?.select()
+            binding.dayTabs.getTabAt(dayTabIndex(day))?.select()
             showDayView()
         }
+    }
+
+    private fun dayTabIndex(isoDay: Int): Int =
+        com.example.kronos.lib.orderedIsoDays(SettingsStore(requireContext()).firstDayOfWeek)
+            .indexOf(isoDay).coerceAtLeast(0)
+
+    private fun dayTabDay(index: Int): Int =
+        com.example.kronos.lib.orderedIsoDays(SettingsStore(requireContext()).firstDayOfWeek)
+            .getOrElse(index) { 1 }
+
+    private fun applyDisplaySettings() {
+        val settings = SettingsStore(requireContext())
+        binding.dayTabs.removeAllTabs()
+        displayWeekdayLabels(settings.firstDayOfWeek).forEach {
+            binding.dayTabs.addTab(binding.dayTabs.newTab().setText(it), false)
+        }
+        binding.dayTabs.getTabAt(dayTabIndex(viewModel.day.value))?.select()
+        binding.weekGrid.setDisplaySettings()
+        adapter.notifyDataSetChanged()
+        refreshMonth()
+        applyHolidayState()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
@@ -83,8 +126,12 @@ class TimetableFragment : Fragment() {
                 R.id.settings -> showSettings()
                 R.id.theme_settings -> showThemeSettings()
                 R.id.reminder_settings -> showReminderSettings()
+                R.id.export_backup -> { createBackup.launch(getString(R.string.backup_file_name)); true }
+                R.id.import_backup -> { openBackup.launch(arrayOf("application/json", "text/plain")); true }
+                R.id.export_classes_csv -> { createClassesCsv.launch(getString(R.string.classes_csv_file_name)); true }
                 else -> false
             }
+
         }
         binding.classList.layoutManager = LinearLayoutManager(requireContext())
         binding.classList.adapter = adapter
@@ -94,15 +141,15 @@ class TimetableFragment : Fragment() {
         binding.monthClasses.layoutManager = LinearLayoutManager(requireContext())
         binding.monthExams.layoutManager = LinearLayoutManager(requireContext())
         binding.monthExams.adapter = examAdapter
-        DAYS.forEach { binding.dayTabs.addTab(binding.dayTabs.newTab().setText(it)) }
+        applyDisplaySettings()
         val reminderDay = requireActivity().intent.getIntExtra(
             com.example.kronos.MainActivity.EXTRA_REMINDER_DAY, 0
         )
-        binding.dayTabs.getTabAt((reminderDay - 1).coerceIn(0, 6))?.select()
+        binding.dayTabs.getTabAt(dayTabIndex(reminderDay))?.select()
         binding.dayTabs.addOnTabSelectedListener(object :
             com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
-                viewModel.selectDay(tab.position + 1)
+                viewModel.selectDay(dayTabDay(tab.position))
                 applyHolidayState()
             }
             override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab) = Unit
@@ -146,12 +193,83 @@ class TimetableFragment : Fragment() {
                     }
                 }
                 launch {
-                    viewModel.day.collect { binding.dayTabs.getTabAt(it - 1)?.select() }
+                    viewModel.day.collect { binding.dayTabs.getTabAt(dayTabIndex(it))?.select() }
                 }
             }
         }
         showDayView()
     }
+
+    private fun backupRepository() = BackupRepository(
+        DatabaseProvider.get(requireContext()), SettingsStore(requireContext())
+    )
+
+    private fun exportBackup(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                val json = withContext(Dispatchers.IO) {
+                    BackupJsonCodec.encode(backupRepository().exportData())
+                }
+                withContext(Dispatchers.IO) {
+                    requireContext().contentResolver.openOutputStream(uri)?.use {
+                        OutputStreamWriter(it, Charsets.UTF_8).use { writer -> writer.write(json) }
+                    } ?: error("Unable to open destination")
+                }
+            }.onFailure { toast(R.string.backup_export_failed) }
+        }
+    }
+
+    private fun readBackup(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    requireContext().contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+                        BackupJsonCodec.decode(reader.readText())
+                    } ?: error("Unable to open backup")
+                }
+            }
+            result.onFailure { error ->
+                toast(error.message ?: getString(R.string.backup_invalid))
+            }.onSuccess { backup ->
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.replace_backup_title)
+                    .setMessage(R.string.replace_backup_message)
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .setPositiveButton(R.string.import_backup) { _, _ ->
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) { backupRepository().importData(backup) }
+                                withContext(Dispatchers.IO) {
+                                    TaskExamReminderScheduler(requireContext()).rescheduleAll()
+                                }
+                                com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
+                            }.onFailure { toast(R.string.backup_import_failed) }
+                        }
+                    }.show()
+            }
+        }
+    }
+
+    private fun exportClassesCsv(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                val csv = withContext(Dispatchers.IO) {
+                    classesCsv(DatabaseProvider.get(requireContext()).classSessionDao().getAllWithSubjects())
+                }
+                withContext(Dispatchers.IO) {
+                    requireContext().contentResolver.openOutputStream(uri)?.use {
+                        OutputStreamWriter(it, Charsets.UTF_8).use { writer -> writer.write(csv) }
+                    } ?: error("Unable to open destination")
+                }
+            }.onFailure { toast(R.string.csv_export_failed) }
+        }
+    }
+
+    private fun toast(message: Int) =
+        android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_LONG).show()
+
+    private fun toast(message: String) =
+        android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_LONG).show()
 
     private fun showDayView(): Boolean {
         binding.dayTabs.visibility = View.VISIBLE
@@ -182,7 +300,7 @@ class TimetableFragment : Fragment() {
         binding.toolbar.menu.findItem(R.id.day_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.week_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.month_view)?.isChecked = true
-        binding.toolbar.title = "${getString(R.string.timetable_title)} · ${selectedMonthDay.month}"
+        binding.toolbar.title = "${getString(R.string.timetable_title)} · ${formatDisplayDate(selectedMonthDay)}"
         refreshMonth()
         return true
     }
@@ -201,7 +319,10 @@ class TimetableFragment : Fragment() {
                 current.plusDays(1).takeIf { !it.isAfter(holiday.endDate) }
             }.toList()
         }.toSet()
-        monthAdapter.submitMonth(month.atDay(1), classDays, examDays, holidayDays, selectedMonthDay)
+        monthAdapter.submitMonth(
+            month.atDay(1), classDays, examDays, holidayDays, selectedMonthDay,
+            SettingsStore(requireContext()).firstDayOfWeek
+        )
         if (binding.monthGrid.visibility == View.VISIBLE) {
             adapter.submitList(monthSessions.filter {
                 it.dayOfWeek == selectedMonthDay.dayOfWeek.value
@@ -215,8 +336,12 @@ class TimetableFragment : Fragment() {
 
     private fun applyHolidayState() {
         if (_binding == null) return
-        val dayDate = LocalDate.now().with(java.time.DayOfWeek.MONDAY)
-                .plusDays((viewModel.day.value - 1).toLong())
+        val dayDate = startOfDisplayedWeek(
+            LocalDate.now(),
+            SettingsStore(requireContext()).firstDayOfWeek
+        ).plusDays(
+            dayTabIndex(viewModel.day.value).toLong()
+        )
         val holiday = holidays.firstOrNull { isDateInHolidayRange(
             dayDate,
             it.startDate,
@@ -239,8 +364,7 @@ class TimetableFragment : Fragment() {
                         binding.dayTimelineScroll.height / 4
                 )
             }
-            binding.toolbar.title = "${dayDate.dayOfWeek.name.take(3).lowercase().replaceFirstChar { it.uppercase() }}, " +
-                "${dayDate.dayOfMonth} ${dayDate.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }} - " +
+            binding.toolbar.title = "${formatDisplayDate(dayDate)} - " +
                 "Week ${viewModel.currentWeek()}"
         } else if (binding.classList.visibility == View.VISIBLE) {
             adapter.submitList(if (holiday != null) emptyList() else daySessions)
@@ -374,10 +498,15 @@ class TimetableFragment : Fragment() {
 
     private fun showSettings(): Boolean {
         val settings = SettingsStore(requireContext())
-        val choices = arrayOf("1 week", "2 weeks", "3 weeks", "4 weeks")
+        val choices = arrayOf("1 week", "2 weeks", "3 weeks", "4 weeks", getString(R.string.display_settings))
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.rotation_length)
             .setSingleChoiceItems(choices, settings.rotationLength - 1) { dialog, which ->
+                if (which == 4) {
+                    dialog.dismiss()
+                    showDisplaySettings()
+                    return@setSingleChoiceItems
+                }
                 settings.rotationLength = which + 1
                 com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
                 viewLifecycleOwner.lifecycleScope.launch { reminderScheduler.rescheduleAll() }
@@ -395,6 +524,65 @@ class TimetableFragment : Fragment() {
             .setNegativeButton(R.string.holidays) { _, _ -> showHolidayManager() }
             .show()
         return true
+    }
+
+    private fun showDisplaySettings() {
+        val settings = SettingsStore(requireContext())
+        var selectedTimeFormat = settings.timeFormat
+        var selectedFirstDay = settings.firstDayOfWeek
+        val content = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 0, 32, 0)
+        }
+        fun addChoiceSection(title: Int, options: Array<String>, checked: Int, onChanged: (Int) -> Unit) {
+            content.addView(TextView(requireContext()).apply {
+                text = getString(title)
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
+                setPadding(0, 20, 0, 4)
+            })
+            val group = android.widget.RadioGroup(requireContext()).apply {
+                orientation = android.widget.RadioGroup.VERTICAL
+            }
+            options.forEachIndexed { index, label ->
+                group.addView(android.widget.RadioButton(requireContext()).apply {
+                    id = View.generateViewId()
+                    text = label
+                    tag = index
+                })
+            }
+            group.check(group.getChildAt(checked).id)
+            group.setOnCheckedChangeListener { _, checkedId ->
+                group.findViewById<android.widget.RadioButton>(checkedId)
+                    ?.tag
+                    ?.let { onChanged(it as Int) }
+            }
+            content.addView(group)
+        }
+        addChoiceSection(
+            R.string.time_format,
+            arrayOf(getString(R.string.time_format_24), getString(R.string.time_format_12)),
+            if (settings.timeFormat == TimeFormat.HOUR_24) 0 else 1
+        ) { index ->
+            selectedTimeFormat = if (index == 0) TimeFormat.HOUR_24 else TimeFormat.HOUR_12
+        }
+        addChoiceSection(
+            R.string.first_day_of_week,
+            arrayOf(getString(R.string.monday), getString(R.string.sunday)),
+            if (settings.firstDayOfWeek == FirstDayOfWeek.MONDAY) 0 else 1
+        ) { index ->
+            selectedFirstDay = if (index == 0) FirstDayOfWeek.MONDAY else FirstDayOfWeek.SUNDAY
+        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.display_settings)
+            .setView(content)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.save) { _, _ ->
+                settings.timeFormat = selectedTimeFormat
+                settings.firstDayOfWeek = selectedFirstDay
+                applyDisplaySettings()
+                com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
+            }
+            .show()
     }
 
     private fun showThemeSettings(): Boolean {
@@ -607,7 +795,4 @@ class TimetableFragment : Fragment() {
         super.onDestroyView()
     }
 
-    companion object {
-        private val DAYS = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-    }
 }

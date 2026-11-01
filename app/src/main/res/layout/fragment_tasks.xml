@@ -35,6 +35,30 @@
         android:layout_weight="1"
         android:clipToPadding="false"
         android:padding="12dp" />
+    <LinearLayout
+        android:id="@+id/emptyState"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:visibility="gone">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/no_tasks_yet"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textStyle="bold" />
+        <TextView
+            android:id="@+id/emptyStateSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/no_tasks_yet_subtitle"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+    </LinearLayout>
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/addTask"
         android:layout_width="wrap_content"

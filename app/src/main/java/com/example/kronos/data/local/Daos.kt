@@ -27,6 +27,10 @@ data class ClassSessionWithSubject(
 interface SubjectDao {
     @Insert
     suspend fun insert(subject: Subject): Long
+    @Query("SELECT * FROM subjects")
+    suspend fun getAll(): List<Subject>
+    @Query("DELETE FROM subjects")
+    suspend fun deleteAll()
 
     @Query("SELECT * FROM subjects WHERE id = :id")
     suspend fun findById(id: Long): Subject?
@@ -72,6 +76,8 @@ interface ClassSessionDao {
 
     @Insert
     suspend fun insert(session: ClassSession): Long
+    @Query("DELETE FROM class_sessions")
+    suspend fun deleteAll()
 
     @Update
     suspend fun update(session: ClassSession)
@@ -132,6 +138,8 @@ interface TaskDao {
 
     @Insert
     suspend fun insert(task: Task): Long
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAll()
 
     @Update
     suspend fun update(task: Task)
@@ -156,6 +164,10 @@ interface CategoryDao {
 
     @Insert(onConflict = androidx.room.OnConflictStrategy.IGNORE)
     suspend fun insert(category: Category): Long
+    @Query("SELECT * FROM categories")
+    suspend fun getAll(): List<Category>
+    @Query("DELETE FROM categories")
+    suspend fun deleteAll()
 
     @Update
     suspend fun update(category: Category)
@@ -198,6 +210,8 @@ interface ExamDao {
 
     @Insert
     suspend fun insert(exam: Exam): Long
+    @Query("DELETE FROM exams")
+    suspend fun deleteAll()
 
     @Update
     suspend fun update(exam: Exam)
@@ -222,6 +236,8 @@ interface HolidayDao {
 
     @Insert
     suspend fun insert(holiday: Holiday): Long
+    @Query("DELETE FROM holidays")
+    suspend fun deleteAll()
 
     @Update
     suspend fun update(holiday: Holiday)

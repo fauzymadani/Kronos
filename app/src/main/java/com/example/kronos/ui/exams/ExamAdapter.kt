@@ -1,6 +1,10 @@
 package com.example.kronos.ui.exams
 
 import com.example.kronos.lib.parseUserColor
+import com.example.kronos.data.SettingsStore
+import com.example.kronos.lib.formatDisplayDate
+import com.example.kronos.lib.formatDisplayTime
+import java.time.LocalTime
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -21,6 +25,7 @@ class ExamAdapter(private val onClick: (ExamWithSubject) -> Unit) :
 
     inner class Holder(private val binding: ItemExamBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: ExamWithSubject) {
+            val settings = SettingsStore(binding.root.context)
             binding.subject.text = item.subjectName ?: item.title
             item.subjectColor?.let {
                 binding.subject.setTextColor(
@@ -34,8 +39,10 @@ class ExamAdapter(private val onClick: (ExamWithSubject) -> Unit) :
                 else -> binding.root.context.getString(R.string.in_days, days)
             }
             binding.details.text = listOfNotNull(
-                item.date,
-                item.startTime,
+                formatDisplayDate(LocalDate.parse(item.date)),
+                item.startTime?.let {
+                    formatDisplayTime(LocalTime.parse(it), settings.timeFormat)
+                },
                 item.room?.let { "Room $it" },
                 item.seat?.let { "Seat $it" }
             ).joinToString(" · ")

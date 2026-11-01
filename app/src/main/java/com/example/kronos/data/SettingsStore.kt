@@ -56,6 +56,14 @@ class SettingsStore(context: Context) {
         get() = preferences.getBoolean(KEY_PURE_BLACK, false)
         set(value) = preferences.edit { putBoolean(KEY_PURE_BLACK, value) }
 
+    var timeFormat: TimeFormat
+        get() = TimeFormat.fromStoredValue(preferences.getString(KEY_TIME_FORMAT, null))
+        set(value) = preferences.edit { putString(KEY_TIME_FORMAT, value.value) }
+
+    var firstDayOfWeek: FirstDayOfWeek
+        get() = FirstDayOfWeek.fromStoredValue(preferences.getString(KEY_FIRST_DAY, null))
+        set(value) = preferences.edit { putString(KEY_FIRST_DAY, value.value) }
+
     var defaultReminderOffsetMinutes: Int
         get() = preferences.getInt(KEY_DEFAULT_REMINDER_OFFSET, 10)
         set(value) {
@@ -89,6 +97,22 @@ class SettingsStore(context: Context) {
             )
             set(value) = preferences.edit { putString(KEY_EXAM_HOUR, value.toString()) }
 
+    fun exportableSettings(): Map<String, Any> = mapOf(
+        "rotationLength" to rotationLength,
+        "semesterStart" to semesterStart.toString(),
+        "themeMode" to themeMode.value,
+        "pureBlack" to pureBlack,
+        "timeFormat" to timeFormat.value,
+        "firstDayOfWeek" to firstDayOfWeek.value,
+        "defaultReminderOffsetMinutes" to defaultReminderOffsetMinutes,
+        "taskRemindersEnabled" to taskRemindersEnabled,
+        "classRemindersEnabled" to classRemindersEnabled,
+        "examRemindersEnabled" to examRemindersEnabled,
+        "examDayBeforeEnabled" to examDayBeforeEnabled,
+        "examHourBeforeEnabled" to examHourBeforeEnabled,
+        "examReminderHour" to examReminderHour.toString()
+    )
+
     companion object {
         private const val NAME = "kronos_settings"
         private const val KEY_ROTATION_LENGTH = "rotation_length"
@@ -96,6 +120,8 @@ class SettingsStore(context: Context) {
         private const val KEY_PERIODS = "class_periods"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_PURE_BLACK = "pure_black"
+        private const val KEY_TIME_FORMAT = "time_format"
+        private const val KEY_FIRST_DAY = "first_day_of_week"
         private const val KEY_DEFAULT_REMINDER_OFFSET = "default_reminder_offset"
         private const val KEY_TASK_REMINDERS = "task_reminders"
         private const val KEY_CLASS_REMINDERS = "class_reminders"
@@ -103,6 +129,25 @@ class SettingsStore(context: Context) {
         private const val KEY_EXAM_DAY_BEFORE = "exam_day_before"
         private const val KEY_EXAM_HOUR_BEFORE = "exam_hour_before"
         private const val KEY_EXAM_HOUR = "exam_reminder_hour"
+    }
+
+}
+
+enum class TimeFormat(val value: String) {
+    HOUR_24("24"), HOUR_12("12");
+
+    companion object {
+        fun fromStoredValue(value: String?): TimeFormat =
+            entries.firstOrNull { it.value == value } ?: HOUR_24
+    }
+}
+
+enum class FirstDayOfWeek(val value: String, val isoDay: Int) {
+    MONDAY("monday", 1), SUNDAY("sunday", 7);
+
+    companion object {
+        fun fromStoredValue(value: String?): FirstDayOfWeek =
+            entries.firstOrNull { it.value == value } ?: MONDAY
     }
 }
 

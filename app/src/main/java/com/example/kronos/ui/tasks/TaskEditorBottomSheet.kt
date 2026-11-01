@@ -18,6 +18,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import com.example.kronos.data.SettingsStore
+import com.example.kronos.lib.formatDisplayDate
+import com.example.kronos.lib.formatDisplayTime
+import com.example.kronos.data.TimeFormat
 
 class TaskEditorBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetTaskBinding? = null
@@ -89,7 +93,7 @@ class TaskEditorBottomSheet : BottomSheetDialogFragment() {
             TimePickerDialog(requireContext(), { _, hour, minute ->
                 dueTime = LocalTime.of(hour, minute)
                 renderDates()
-            }, time.hour, time.minute, true).show()
+            }, time.hour, time.minute, SettingsStore(requireContext()).timeFormat == TimeFormat.HOUR_24).show()
         }
         binding.reminderDate.setOnClickListener {
             val date = reminderTime?.toLocalDate() ?: LocalDate.now()
@@ -107,7 +111,7 @@ class TaskEditorBottomSheet : BottomSheetDialogFragment() {
                     reminderTime?.toLocalDate() ?: LocalDate.now(), LocalTime.of(hour, minute)
                 )
                 renderDates()
-            }, time.hour, time.minute, true).show()
+            }, time.hour, time.minute, SettingsStore(requireContext()).timeFormat == TimeFormat.HOUR_24).show()
         }
         binding.save.setOnClickListener { save() }
         binding.delete.visibility = if (taskId == 0L) View.GONE else View.VISIBLE
@@ -124,11 +128,16 @@ class TaskEditorBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun renderDates() {
-        binding.dueDate.text = dueDate?.toString() ?: getString(R.string.due_date)
-        binding.dueTime.text = dueTime?.toString() ?: getString(R.string.due_time)
-        binding.reminderDate.text = reminderTime?.toLocalDate()?.toString()
+        val settings = SettingsStore(requireContext())
+        binding.dueDate.text = dueDate?.let(::formatDisplayDate) ?: getString(R.string.due_date)
+        binding.dueTime.text = dueTime?.let {
+            formatDisplayTime(it, settings.timeFormat)
+        } ?: getString(R.string.due_time)
+        binding.reminderDate.text = reminderTime?.toLocalDate()?.let(::formatDisplayDate)
             ?: getString(R.string.reminder_date)
-        binding.reminderTime.text = reminderTime?.toLocalTime()?.toString()
+        binding.reminderTime.text = reminderTime?.toLocalTime()?.let {
+            formatDisplayTime(it, settings.timeFormat)
+        }
             ?: getString(R.string.reminder_time)
     }
 

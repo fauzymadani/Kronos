@@ -10,10 +10,12 @@ import android.view.MotionEvent
 import android.view.View
 import com.example.kronos.R
 import com.example.kronos.data.local.ClassSessionWithSubject
+import com.example.kronos.data.SettingsStore
 import com.example.kronos.lib.DayTimelineLayout
 import com.example.kronos.lib.calculateDayTimelineLayout
 import com.example.kronos.lib.contrastingTextColor
 import com.example.kronos.lib.parseUserColor
+import com.example.kronos.lib.formatDisplayTime
 import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.math.max
@@ -34,6 +36,7 @@ class DayTimelineView @JvmOverloads constructor(
     private val textColors = ArrayList<Int>(24)
     private val labelText = ArrayList<String>(24)
     private var currentLineMinute = -1
+    private var timeFormat = SettingsStore(context).timeFormat
 
     private val density = resources.displayMetrics.density
     private val timeWidth = dp(58f)
@@ -94,6 +97,7 @@ class DayTimelineView @JvmOverloads constructor(
         boldTextPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurface)
         currentPaint.color = resolveColor(com.google.android.material.R.attr.colorPrimary)
         currentDotPaint.color = currentPaint.color
+        timeFormat = SettingsStore(context).timeFormat
     }
 
     fun minuteForScroll(): Int =
@@ -225,7 +229,10 @@ class DayTimelineView @JvmOverloads constructor(
         }
         var hour = (layout.firstMinute / 60) * 60
         while (hour <= layout.lastMinute) {
-            labelText += formatMinute(hour)
+            labelText += formatDisplayTime(
+                LocalTime.of((hour / 60) % 24, hour % 60),
+                timeFormat
+            )
             hour += 60
         }
     }

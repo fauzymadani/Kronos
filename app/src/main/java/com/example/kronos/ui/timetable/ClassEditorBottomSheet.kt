@@ -16,6 +16,7 @@ import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
 import java.time.LocalTime
 import com.example.kronos.data.SettingsStore
+import com.example.kronos.lib.formatDisplayTime
 
 class ClassEditorBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetClassBinding? = null
@@ -74,7 +75,8 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
         )
         periods = SettingsStore(requireContext()).periods
         val periodLabels = listOf(getString(R.string.custom_times)) + periods.map {
-            "${it.name}, ${it.start} - ${it.end}"
+            "${it.name}, ${formatDisplayTime(it.start, SettingsStore(requireContext()).timeFormat)} - " +
+                formatDisplayTime(it.end, SettingsStore(requireContext()).timeFormat)
         }
         binding.period.adapter = ArrayAdapter(
             requireContext(),
@@ -143,7 +145,13 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
     private fun showTimePicker(isStart: Boolean) {
         val value = if (isStart) start else end
         MaterialTimePicker.Builder()
-            .setTimeFormat(TimeFormat.CLOCK_24H)
+            .setTimeFormat(
+                if (SettingsStore(requireContext()).timeFormat == com.example.kronos.data.TimeFormat.HOUR_12) {
+                    TimeFormat.CLOCK_12H
+                } else {
+                    TimeFormat.CLOCK_24H
+                }
+            )
             .setHour(value.hour)
             .setMinute(value.minute)
             .setTitleText(if (isStart) R.string.start_time else R.string.end_time)
@@ -158,8 +166,9 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun renderTimes() {
-        binding.startTime.text = start.toString()
-        binding.endTime.text = end.toString()
+        val format = SettingsStore(requireContext()).timeFormat
+        binding.startTime.text = formatDisplayTime(start, format)
+        binding.endTime.text = formatDisplayTime(end, format)
         updateSelection()
     }
 

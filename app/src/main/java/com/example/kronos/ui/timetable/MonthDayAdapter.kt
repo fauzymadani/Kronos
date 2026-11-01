@@ -5,6 +5,8 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.kronos.databinding.ItemMonthDayBinding
 import java.time.LocalDate
+import com.example.kronos.data.FirstDayOfWeek
+import com.example.kronos.lib.calendarLeadingDays
 
 data class MonthDay(
     val date: LocalDate?,
@@ -18,6 +20,7 @@ class MonthDayAdapter(
     private val onDayClick: (LocalDate) -> Unit
 ) : RecyclerView.Adapter<MonthDayAdapter.ViewHolder>() {
     private var days: List<MonthDay> = emptyList()
+    private var firstDay = FirstDayOfWeek.MONDAY
 
     fun submitMonth(
         month: LocalDate,
@@ -25,9 +28,11 @@ class MonthDayAdapter(
         examDays: Set<LocalDate>,
         holidayDays: Set<LocalDate>,
         selected: LocalDate
+        , configuredFirstDay: FirstDayOfWeek = firstDay
     ) {
+        firstDay = configuredFirstDay
         val first = month.withDayOfMonth(1)
-        val leading = first.dayOfWeek.value - 1
+        val leading = calendarLeadingDays(first, firstDay)
         val total = ((leading + month.lengthOfMonth() + 6) / 7) * 7
         days = List(total) { index ->
             val date = first.minusDays(leading.toLong()).plusDays(index.toLong())

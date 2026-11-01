@@ -8,6 +8,13 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import com.example.kronos.data.local.ClassSessionWithSubject
+import com.example.kronos.data.FirstDayOfWeek
+import com.example.kronos.data.SettingsStore
+import com.example.kronos.data.TimeFormat
+import com.example.kronos.lib.dayColumnIndex
+import com.example.kronos.lib.displayWeekdayLabels
+import com.example.kronos.lib.formatDisplayTime
+import com.example.kronos.lib.startOfDisplayedWeek
 import com.example.kronos.R
 import com.example.kronos.lib.contrastingTextColor
 import com.example.kronos.lib.parseUserColor
@@ -39,10 +46,18 @@ class WeekGridView @JvmOverloads constructor(
     private val days = arrayOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     private val hourHeight = dp(56f)
     private val headerHeight = dp(36f)
-    private val timeWidth = dp(42f)
+    private val minimumTimeWidth = dp(42f)
     private val padding = dp(8f)
     private val firstHour = 6
     private val lastHour = 22
+    private var firstDay = SettingsStore(context).firstDayOfWeek
+    private var timeFormat = SettingsStore(context).timeFormat
+
+    fun setDisplaySettings() {
+        firstDay = SettingsStore(context).firstDayOfWeek
+        timeFormat = SettingsStore(context).timeFormat
+        invalidate()
+    }
 
     fun setSessions(value: List<ClassSessionWithSubject>) {
         sessions = value
@@ -65,10 +80,17 @@ class WeekGridView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         blocks.clear()
+        textPaint.textSize = dp(12f)
+        val timeWidth = max(
+            minimumTimeWidth,
+            (firstHour..lastHour)
+                .maxOf { textPaint.measureText(formatDisplayTime(LocalTime.of(it, 0), timeFormat)) }
+                .plus(dp(8f))
+        )
         val columnWidth = (width - timeWidth - padding * 2) / days.size
         val left = padding + timeWidth
         val top = padding + headerHeight
-        days.forEachIndexed { index, day ->
+        displayWeekdayLabels(firstDay).forEachIndexed { index, day ->
             val x = left + index * columnWidth
             textPaint.textAlign = Paint.Align.CENTER
             canvas.drawText(day, x + columnWidth / 2f, padding + headerHeight * .7f, textPaint)
@@ -79,11 +101,16 @@ class WeekGridView @JvmOverloads constructor(
         textPaint.textAlign = Paint.Align.RIGHT
         for (hour in firstHour..lastHour) {
             val y = top + (hour - firstHour) * hourHeight
-            canvas.drawText(String.format("%02d:00", hour), timeWidth, y + dp(4f), textPaint)
+            canvas.drawText(
+                formatDisplayTime(LocalTime.of(hour, 0), timeFormat),
+                timeWidth,
+                y + dp(4f),
+                textPaint
+            )
             canvas.drawLine(left, y, left + days.size * columnWidth, y, gridPaint)
         }
         sessions.forEach { session ->
-            val dayIndex = session.dayOfWeek - 1
+            val dayIndex = dayColumnIndex(session.dayOfWeek, firstDay)
             if (dayIndex !in 0..6) return@forEach
             val start = LocalTime.parse(session.startTime)
             val end = LocalTime.parse(session.endTime)
@@ -112,10 +139,10 @@ class WeekGridView @JvmOverloads constructor(
             canvas.restore()
             blocks += rect to session
         }
-        val monday = LocalDate.now().with(java.time.DayOfWeek.MONDAY)
+        val weekStart = startOfDisplayedWeek(LocalDate.now(), firstDay)
         val holidayPaint = Paint().apply { color = context.getColor(R.color.holiday_overlay) }
         (0..6).forEach { dayIndex ->
-            if (monday.plusDays(dayIndex.toLong()) in holidayDates) {
+            if (weekStart.plusDays(dayIndex.toLong()) in holidayDates) {
                 val x = left + dayIndex * columnWidth
                 canvas.drawRect(
                     x, padding, x + columnWidth,

@@ -47,6 +47,7 @@ class ExamsFragment : Fragment() {
             binding.pastList.visibility =
                 if (binding.pastList.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
+
         parentFragmentManager.setFragmentResultListener(
             ExamEditorBottomSheet.REQUEST, viewLifecycleOwner
         ) { _, result -> handleResult(result) }
@@ -56,9 +57,21 @@ class ExamsFragment : Fragment() {
                     val today = LocalDate.now().toString()
                     upcomingAdapter.submitList(all.filter { it.date >= today })
                     pastAdapter.submitList(all.filter { it.date < today })
+                    val hasUpcoming = all.any { it.date >= today }
+                    binding.upcomingList.visibility = if (hasUpcoming) View.VISIBLE else View.GONE
+                    binding.emptyState.visibility = if (hasUpcoming) View.GONE else View.VISIBLE
                     binding.pastHeader.visibility = if (pastAdapter.itemCount == 0) View.GONE else View.VISIBLE
                 }
+
             }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (_binding != null) {
+            upcomingAdapter.notifyDataSetChanged()
+            pastAdapter.notifyDataSetChanged()
         }
     }
 

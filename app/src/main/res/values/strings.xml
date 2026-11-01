@@ -92,7 +92,7 @@
     <string name="reminder_settings">Reminder default</string>
     <string name="reminder_minutes_before">%1$d minutes before class</string>
     <string name="class_reminder_title">Upcoming class</string>
-    <string name="class_reminder_text">%1$s starts soon</string>
+    <string name="class_reminder_text">%1$s starts at %2$s</string>
     <string name="task_reminder_channel">Task reminders</string>
     <string name="exam_reminder_channel">Exam reminders</string>
     <string name="reminder_title">Reminder</string>
@@ -106,4 +106,28 @@
     <string name="reminder_date">Reminder date</string>
     <string name="reminder_time">Reminder time</string>
     <string name="widget_no_classes">No classes today</string>
+    <string name="export_backup">Export backup</string>
+    <string name="import_backup">Import backup</string>
+    <string name="export_classes_csv">Export classes CSV</string>
+    <string name="backup_file_name">kronos-backup.json</string>
+    <string name="classes_csv_file_name">kronos-classes.csv</string>
+    <string name="replace_backup_title">Replace existing data?</string>
+    <string name="replace_backup_message">This will replace all subjects, classes, categories, tasks, exams, holidays, periods, and settings. This cannot be undone.</string>
+    <string name="backup_invalid">The backup could not be imported.</string>
+    <string name="backup_export_failed">Could not export the backup.</string>
+    <string name="backup_import_failed">Could not import the backup.</string>
+    <string name="csv_export_failed">Could not export classes.</string>
+    <string name="display_settings">Display settings</string>
+    <string name="time_format">Time format</string>
+    <string name="time_format_24">24-hour (13:00)</string>
+    <string name="time_format_12">12-hour (1:00 PM)</string>
+    <string name="first_day_of_week">First day of week</string>
+    <string name="monday">Monday</string>
+    <string name="sunday">Sunday</string>
+    <string name="no_tasks_yet">No tasks yet</string>
+    <string name="no_tasks_yet_subtitle">Your tasks will appear here. Tap Add task to create your first one.</string>
+    <string name="no_matching_tasks_subtitle">There are no tasks matching this filter.</string>
+    <string name="no_upcoming_exams">No upcoming exams</string>
+    <string name="no_upcoming_exams_subtitle">Your upcoming exams will appear here. Tap Add exam to plan one.</string>
+    <string name="no_categories_yet">No categories yet. Add one to organize your tasks.</string>
 </resources>

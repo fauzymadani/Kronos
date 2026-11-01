@@ -15,6 +15,28 @@
         android:layout_weight="1"
         android:clipToPadding="false"
         android:padding="12dp" />
+    <LinearLayout
+        android:id="@+id/emptyState"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/no_upcoming_exams"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/no_upcoming_exams_subtitle"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
+    </LinearLayout>
     <TextView
         android:id="@+id/pastHeader"
         android:layout_width="match_parent"

@@ -9,6 +9,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.example.kronos.MainActivity
 import com.example.kronos.R
+import com.example.kronos.data.SettingsStore
+import com.example.kronos.lib.formatDisplayTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -47,7 +49,14 @@ class ClassReminderReceiver : BroadcastReceiver() {
                         .setSmallIcon(R.drawable.ic_launcher_foreground)
                         .setContentTitle(appContext.getString(R.string.class_reminder_title))
                         .setContentText(
-                            appContext.getString(R.string.class_reminder_text, subject)
+                            appContext.getString(
+                                R.string.class_reminder_text,
+                                subject,
+                                formatDisplayTime(
+                                    occurrence.toLocalTime(),
+                                    SettingsStore(appContext).timeFormat
+                                )
+                            )
                         )
                         .setContentIntent(contentIntent)
                         .setAutoCancel(true)

@@ -10,13 +10,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.kronos.data.local.ClassSessionWithSubject
 import com.example.kronos.databinding.ItemClassSessionBinding
 import java.time.LocalTime
-import java.time.format.DateTimeFormatter
+import com.example.kronos.data.SettingsStore
+import com.example.kronos.lib.formatDisplayTime
 
 class ClassSessionAdapter(
     private val onClick: (ClassSessionWithSubject) -> Unit
 ) : ListAdapter<ClassSessionWithSubject, ClassSessionAdapter.ViewHolder>(DiffCallback) {
-    private val formatter = DateTimeFormatter.ofPattern("HH:mm")
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
         ViewHolder(
             ItemClassSessionBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -28,8 +27,9 @@ class ClassSessionAdapter(
     inner class ViewHolder(private val binding: ItemClassSessionBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: ClassSessionWithSubject) {
-            binding.time.text = "${LocalTime.parse(item.startTime).format(formatter)} - " +
-                LocalTime.parse(item.endTime).format(formatter)
+            val format = SettingsStore(binding.root.context).timeFormat
+            binding.time.text = "${formatDisplayTime(LocalTime.parse(item.startTime), format)} - " +
+                formatDisplayTime(LocalTime.parse(item.endTime), format)
             binding.subject.text = item.subjectName
             binding.details.text = listOfNotNull(item.room, item.teacher, item.notes)
                 .joinToString(" • ")

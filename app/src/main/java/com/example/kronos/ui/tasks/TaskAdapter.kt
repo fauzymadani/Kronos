@@ -13,6 +13,9 @@ import android.graphics.drawable.GradientDrawable
 import com.example.kronos.R
 import com.example.kronos.lib.contrastingTextColor
 import com.example.kronos.lib.parseUserColor
+import com.example.kronos.data.SettingsStore
+import com.example.kronos.lib.formatDisplayDate
+import com.example.kronos.lib.formatDisplayTime
 
 class TaskAdapter(
     private val onClick: (TaskWithSubject) -> Unit,
@@ -25,10 +28,13 @@ class TaskAdapter(
 
     inner class Holder(private val binding: ItemTaskBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: TaskWithSubject) {
+            val settings = SettingsStore(binding.root.context)
             binding.title.text = item.title
             binding.details.text = buildString {
-                item.dueDate?.let { append(LocalDate.parse(it)) }
-                item.dueTime?.let { append(" · ").append(LocalTime.parse(it)) }
+                item.dueDate?.let { append(formatDisplayDate(LocalDate.parse(it))) }
+                item.dueTime?.let {
+                    append(" · ").append(formatDisplayTime(LocalTime.parse(it), settings.timeFormat))
+                }
                 item.subjectName?.let { append(" · ").append(it) }
                 if (item.priority > 0) append(" · ").append(PRIORITIES[item.priority])
             }

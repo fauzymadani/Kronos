@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -47,7 +46,7 @@ class TasksFragment : Fragment() {
     private var sort = Sort.DUE_DATE
     private var taskEditor: TaskEditorBottomSheet? = null
     private var categoriesDialog: AlertDialog? = null
-    private var categoriesDialogAdapter: ArrayAdapter<String>? = null
+    private var categoriesContainer: android.widget.LinearLayout? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         _binding = FragmentTasksBinding.inflate(inflater, container, false)
@@ -64,11 +63,13 @@ class TasksFragment : Fragment() {
                 true
             } else false
         }
+
         setupFilters()
         attachSwipeActions()
         binding.addTask.setOnClickListener {
             openEditor(null)
         }
+
         parentFragmentManager.setFragmentResultListener(
             TaskEditorBottomSheet.REQUEST,
             viewLifecycleOwner
@@ -84,15 +85,16 @@ class TasksFragment : Fragment() {
                 launch {
                     viewModel.categories.collect { categories ->
                         taskEditor?.updateCategories(categories)
-                        categoriesDialogAdapter?.let { adapter ->
-                            adapter.clear()
-                            adapter.addAll(categories.map(Category::name))
-                            adapter.notifyDataSetChanged()
-                        }
+                        rebuildCategoryList(categories)
                     }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (_binding != null) adapter.notifyDataSetChanged()
     }
 
     private fun setupFilters() {
@@ -181,6 +183,11 @@ class TasksFragment : Fragment() {
             )
             .toList()
         adapter.submitList(filtered)
+        binding.taskList.visibility = if (filtered.isEmpty()) View.GONE else View.VISIBLE
+        binding.emptyState.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
+        binding.emptyStateSubtitle.text = getString(
+            if (source.isEmpty()) R.string.no_tasks_yet_subtitle else R.string.no_matching_tasks_subtitle
+        )
     }
 
     private fun compareNullable(first: String?, second: String?): Int = when {
@@ -234,24 +241,77 @@ class TasksFragment : Fragment() {
     }
 
     private fun showCategories() {
-        val adapter = ArrayAdapter(
-            requireContext(), android.R.layout.simple_list_item_1,
-            viewModel.categories.value.map(Category::name).toMutableList()
-        )
-        categoriesDialogAdapter = adapter
+        val list = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+        }
+        categoriesContainer = list
+        val scroll = android.widget.ScrollView(requireContext()).apply {
+            isFillViewport = true
+            addView(list)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                -1, (resources.displayMetrics.heightPixels * .55f).toInt()
+            )
+        }
+        rebuildCategoryList(viewModel.categories.value)
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.manage_categories)
-            .setAdapter(adapter) { _, which ->
-                editCategory(viewModel.categories.value.getOrNull(which))
-            }
+            .setView(scroll)
             .setPositiveButton(R.string.add_category) { _, _ -> editCategory(null) }
             .create()
         categoriesDialog = dialog
         dialog.setOnDismissListener {
             categoriesDialog = null
-            categoriesDialogAdapter = null
+            categoriesContainer = null
         }
         dialog.show()
+    }
+
+    private fun rebuildCategoryList(categories: List<Category>) {
+        val container = categoriesContainer ?: return
+        val density = resources.displayMetrics.density
+        container.removeAllViews()
+        if (categories.isEmpty()) {
+            container.addView(android.widget.TextView(requireContext()).apply {
+                text = getString(R.string.no_categories_yet)
+                setPadding(24, 32, 24, 32)
+            })
+        } else {
+            categories.forEachIndexed { index, category ->
+                if (index > 0) {
+                    container.addView(View(requireContext()).apply {
+                        setBackgroundColor(
+                            R.color.grid_line.let { requireContext().getColor(it) }
+                        )
+                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                            -1, density.toInt().coerceAtLeast(1)
+                        )
+                    })
+                }
+                container.addView(android.widget.LinearLayout(requireContext()).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    minimumHeight = (56 * density).toInt()
+                    setPadding((20 * density).toInt(), 0, (16 * density).toInt(), 0)
+                    setBackgroundResource(android.R.drawable.list_selector_background)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener { editCategory(category) }
+                    addView(android.widget.TextView(requireContext()).apply {
+                        text = category.name
+                        setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyLarge)
+                        layoutParams = android.widget.LinearLayout.LayoutParams(0, -2, 1f)
+                    })
+                    addView(android.widget.TextView(requireContext()).apply {
+                        text = ">"
+                        textSize = 24f
+                        gravity = android.view.Gravity.CENTER
+                        setTextColor(requireContext().getColor(R.color.widget_dark_secondary))
+                        contentDescription = getString(R.string.edit_category)
+                        layoutParams = android.widget.LinearLayout.LayoutParams((40 * density).toInt(), -1)
+                    })
+                })
+            }
+        }
     }
 
     private fun editCategory(category: Category?) {
@@ -362,6 +422,7 @@ class TasksFragment : Fragment() {
         binding.taskList.adapter = null
         taskEditor = null
         categoriesDialog?.dismiss()
+        categoriesContainer = null
         _binding = null
         super.onDestroyView()
     }

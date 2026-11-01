@@ -15,9 +15,11 @@ import com.example.kronos.data.ThemeMode
 import com.example.kronos.data.local.DatabaseProvider
 import com.example.kronos.lib.currentRotationWeek
 import com.example.kronos.lib.parseUserColor
+import com.example.kronos.lib.formatDisplayTime
 import com.example.kronos.notifications.AlarmManagerGateway
 import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
@@ -169,8 +171,15 @@ class TimetableWidgetProvider : AppWidgetProvider() {
                 views.setTextColor(endTimeIds[index], if (row.highlighted) subjectColor else secondaryText)
                 views.setTextColor(subjectIds[index], primaryText)
                 views.setTextColor(roomIds[index], secondaryText)
-                views.setTextViewText(timeIds[index], shortTime(session.startTime))
-                views.setTextViewText(endTimeIds[index], shortTime(session.endTime))
+                val timeFormat = settings.timeFormat
+                views.setTextViewText(
+                    timeIds[index],
+                    formatDisplayTime(LocalTime.parse(session.startTime), timeFormat)
+                )
+                views.setTextViewText(
+                    endTimeIds[index],
+                    formatDisplayTime(LocalTime.parse(session.endTime), timeFormat)
+                )
                 views.setTextViewText(subjectIds[index], session.subjectName)
                 views.setTextViewText(roomIds[index], session.room.orEmpty())
                 views.setInt(
@@ -199,9 +208,6 @@ class TimetableWidgetProvider : AppWidgetProvider() {
         )
         return views
     }
-
-    private fun shortTime(value: String): String =
-        if (value.count { it == ':' } > 1) value.substringBeforeLast(':') else value
 
     private fun rowsForHeight(heightDp: Int): Int =
         ((heightDp - 58) / 46).coerceIn(1, 5)

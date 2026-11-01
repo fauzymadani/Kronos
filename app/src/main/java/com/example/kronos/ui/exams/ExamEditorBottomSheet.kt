@@ -16,6 +16,10 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.time.LocalDate
 import java.time.LocalTime
+import com.example.kronos.lib.formatDisplayDate
+import com.example.kronos.lib.formatDisplayTime
+import com.example.kronos.data.SettingsStore
+import com.example.kronos.data.TimeFormat
 
 class ExamEditorBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetExamBinding? = null
@@ -65,7 +69,7 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
             TimePickerDialog(requireContext(), { _, hour, minute ->
                 time = LocalTime.of(hour, minute)
                 render()
-            }, value.hour, value.minute, true).show()
+            }, value.hour, value.minute, SettingsStore(requireContext()).timeFormat == TimeFormat.HOUR_24).show()
         }
         binding.save.setOnClickListener { save() }
         binding.delete.visibility = if (examId == 0L) View.GONE else View.VISIBLE
@@ -84,8 +88,10 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun render() {
-        binding.date.text = date.toString()
-        binding.time.text = time?.toString() ?: getString(R.string.exam_time)
+        val settings = SettingsStore(requireContext())
+        binding.date.text = formatDisplayDate(date)
+        binding.time.text = time?.let { formatDisplayTime(it, settings.timeFormat) }
+            ?: getString(R.string.exam_time)
     }
 
     private fun save() {

@@ -28,4 +28,16 @@
         android:id="@+id/reminder_settings"
         android:title="@string/reminder_settings"
         android:showAsAction="never" />
+    <item
+        android:id="@+id/export_backup"
+        android:title="@string/export_backup"
+        android:showAsAction="never" />
+    <item
+        android:id="@+id/import_backup"
+        android:title="@string/import_backup"
+        android:showAsAction="never" />
+    <item
+        android:id="@+id/export_classes_csv"
+        android:title="@string/export_classes_csv"
+        android:showAsAction="never" />
 </menu>
