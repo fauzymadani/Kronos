@@ -67,6 +67,22 @@ app/src/main/java/com/example/kronos/
 
 Room is the source of truth for application data. ViewModels expose repository flows to the UI, and lifecycle-scoped collectors update views only while their view lifecycle is active. Reminder scheduling is kept separate from UI and database code.
 
+## Performance and low-end device work
+
+Kronos is intentionally built as a small, local-first app for responsive use on older hardware, including Android 8 devices:
+
+- Room queries, backup and restore, CSV export, widget rendering, and reminder rescheduling run off the main thread with coroutines and `Dispatchers.IO`.
+- `StateFlow` streams use lifecycle-aware collection and `SharingStarted.WhileSubscribed` so database observation is not kept active unnecessarily.
+- RecyclerView screens use `ListAdapter` and `DiffUtil` rather than rebuilding every visible row.
+- Fragment view bindings, adapters, callbacks, and widget-related view references are released in `onDestroyView()` to avoid retaining destroyed screens.
+- Reminder delivery uses `AlarmManager` and schedules only the next relevant class boundary instead of polling continuously.
+- The widget does not use periodic polling (`updatePeriodMillis` is `0`); it refreshes on explicit changes and schedules the next needed update.
+- Widget database work and rendering preparation happen asynchronously, while `RemoteViews` layouts use Android-compatible concrete views for older launchers.
+- The app avoids a backend, sync engine, login flow, analytics, and network work, reducing background work, storage use, and battery impact.
+- Room uses KSP code generation instead of kapt, keeping the build pipeline lighter and avoiding runtime reflection for generated database access.
+- The release build enables R8 minification and resource shrinking with the optimized Android configuration, reducing the APK and removing unused code and resources.
+- LeakCanary is debug-only, so leak detection is available during development without increasing the release APK.
+
 ## Building from source
 
 - JDK 17
