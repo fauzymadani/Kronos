@@ -20,7 +20,7 @@ class TimetableViewModel(
     private val repository: TimetableRepository,
     private val settings: com.example.kronos.data.SettingsStore
 ) : ViewModel() {
-    private val selectedDay = MutableStateFlow(1)
+    private val selectedDay = MutableStateFlow(java.time.LocalDate.now().dayOfWeek.value)
     val day: StateFlow<Int> = selectedDay.asStateFlow()
     val sessions: StateFlow<List<ClassSessionWithSubject>> =
         selectedDay.flatMapLatest {

@@ -100,7 +100,16 @@ class WeekGridView @JvmOverloads constructor(
             blockTextPaint.color = contrastingTextColor(blockPaint.color)
             canvas.drawRoundRect(rect, dp(4f), dp(4f), blockPaint)
             blockTextPaint.textAlign = Paint.Align.LEFT
-            canvas.drawText(session.subjectName, rect.left + dp(4f), rect.top + dp(16f), blockTextPaint)
+            canvas.save()
+            canvas.clipRect(rect)
+            drawFittedText(
+                canvas,
+                session.subjectName,
+                rect.left + dp(4f),
+                rect.right - dp(4f),
+                rect.top + dp(16f)
+            )
+            canvas.restore()
             blocks += rect to session
         }
         val monday = LocalDate.now().with(java.time.DayOfWeek.MONDAY)
@@ -127,4 +136,20 @@ class WeekGridView @JvmOverloads constructor(
     }
 
     private fun dp(value: Float): Float = value * resources.displayMetrics.density
+
+    private fun drawFittedText(
+        canvas: Canvas,
+        value: String,
+        left: Float,
+        right: Float,
+        baseline: Float
+    ) {
+        val maxWidth = right - left
+        if (maxWidth <= 0f) return
+        var text = value
+        while (text.length > 1 && blockTextPaint.measureText(text) > maxWidth) {
+            text = text.dropLast(2) + "\u2026"
+        }
+        canvas.drawText(text, left, baseline, blockTextPaint)
+    }
 }

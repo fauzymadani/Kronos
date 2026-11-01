@@ -111,6 +111,7 @@ class TimetableFragment : Fragment() {
             ClassEditorBottomSheet.new(viewModel.day.value).show(parentFragmentManager, "classEditor")
         }
         binding.weekGrid.onClassClick = ::editClass
+        binding.dayTimeline.onClassClick = ::editClass
         parentFragmentManager.setFragmentResultListener(
             ClassEditorBottomSheet.REQUEST,
             viewLifecycleOwner
@@ -153,12 +154,12 @@ class TimetableFragment : Fragment() {
 
     private fun showDayView(): Boolean {
         binding.dayTabs.visibility = View.VISIBLE
-        binding.classList.visibility = View.VISIBLE
+        binding.dayTimelineContainer.visibility = View.VISIBLE
+        binding.classList.visibility = View.GONE
         binding.weekGrid.visibility = View.GONE
         binding.monthGrid.visibility = View.GONE
         binding.monthClasses.visibility = View.GONE
         binding.monthExams.visibility = View.GONE
-        binding.classList.adapter = adapter
         applyHolidayState()
         binding.toolbar.menu.findItem(R.id.day_view)?.isChecked = true
         binding.toolbar.menu.findItem(R.id.week_view)?.isChecked = false
@@ -168,6 +169,7 @@ class TimetableFragment : Fragment() {
 
     private fun showMonthView(): Boolean {
         binding.dayTabs.visibility = View.GONE
+        binding.dayTimelineContainer.visibility = View.GONE
         binding.classList.visibility = View.GONE
         binding.weekGrid.visibility = View.GONE
         binding.monthGrid.visibility = View.VISIBLE
@@ -227,7 +229,19 @@ class TimetableFragment : Fragment() {
             }.toList()
         }.toSet()
         binding.weekGrid.setHolidays(holidayDates)
-        if (binding.classList.visibility == View.VISIBLE) {
+        if (binding.dayTimelineContainer.visibility == View.VISIBLE) {
+            binding.dayTimeline.setDay(dayDate, if (holiday != null) emptyList() else daySessions)
+            binding.dayTimelineScroll.post {
+                binding.dayTimelineScroll.scrollTo(
+                    0,
+                    binding.dayTimeline.yForMinute(binding.dayTimeline.minuteForScroll()) -
+                        binding.dayTimelineScroll.height / 4
+                )
+            }
+            binding.toolbar.title = "${dayDate.dayOfWeek.name.take(3).lowercase().replaceFirstChar { it.uppercase() }}, " +
+                "${dayDate.dayOfMonth} ${dayDate.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }} - " +
+                "Week ${viewModel.currentWeek()}"
+        } else if (binding.classList.visibility == View.VISIBLE) {
             adapter.submitList(if (holiday != null) emptyList() else daySessions)
         }
     }
@@ -240,6 +254,7 @@ class TimetableFragment : Fragment() {
 
     private fun showWeekView(): Boolean {
         binding.dayTabs.visibility = View.GONE
+        binding.dayTimelineContainer.visibility = View.GONE
         binding.classList.visibility = View.GONE
         binding.weekGrid.visibility = View.VISIBLE
         binding.monthGrid.visibility = View.GONE
