@@ -12,6 +12,21 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@style/Theme.Kronos">
+        <receiver
+                android:name=".notifications.ClassReminderReceiver"
+                android:exported="false" />
+        <receiver
+                android:name=".notifications.TaskExamReminderReceiver"
+                android:exported="false" />
+        <receiver
+                android:name=".notifications.ReminderRescheduleReceiver"
+                android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
         <activity
                 android:name=".MainActivity"
                 android:exported="true">
@@ -22,5 +37,5 @@
             </intent-filter>
         </activity>
     </application>
-
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 </manifest>

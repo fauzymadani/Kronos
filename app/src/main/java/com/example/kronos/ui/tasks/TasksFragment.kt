@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -19,6 +21,7 @@ import com.example.kronos.data.local.DatabaseProvider
 import com.example.kronos.data.local.Task
 import com.example.kronos.data.local.TaskWithSubject
 import com.example.kronos.databinding.FragmentTasksBinding
+import com.example.kronos.notifications.TaskExamReminderScheduler
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
@@ -33,7 +36,8 @@ class TasksFragment : Fragment() {
     private val viewModel: TaskViewModel by viewModels {
         val database = DatabaseProvider.get(requireContext())
         TaskViewModel.Factory(
-            TaskRepository(database.taskDao(), database.subjectDao(), database.categoryDao())
+            TaskRepository(database.taskDao(), database.subjectDao(), database.categoryDao()),
+            TaskExamReminderScheduler(requireContext())
         )
     }
     private val adapter = TaskAdapter(::editTask) { task, done ->
@@ -41,6 +45,9 @@ class TasksFragment : Fragment() {
     }
     private var filter = Filter.ALL
     private var sort = Sort.DUE_DATE
+    private var taskEditor: TaskEditorBottomSheet? = null
+    private var categoriesDialog: AlertDialog? = null
+    private var categoriesDialogAdapter: ArrayAdapter<String>? = null
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         _binding = FragmentTasksBinding.inflate(inflater, container, false)
@@ -60,7 +67,7 @@ class TasksFragment : Fragment() {
         setupFilters()
         attachSwipeActions()
         binding.addTask.setOnClickListener {
-            openEditor(null, viewModel.subjects.value, viewModel.categories.value)
+            openEditor(null)
         }
         parentFragmentManager.setFragmentResultListener(
             TaskEditorBottomSheet.REQUEST,
@@ -69,6 +76,21 @@ class TasksFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.tasks.collect { submitFiltered(it) } }
+                launch {
+                    viewModel.subjects.collect { subjects ->
+                        taskEditor?.updateSubjects(subjects)
+                    }
+                }
+                launch {
+                    viewModel.categories.collect { categories ->
+                        taskEditor?.updateCategories(categories)
+                        categoriesDialogAdapter?.let { adapter ->
+                            adapter.clear()
+                            adapter.addAll(categories.map(Category::name))
+                            adapter.notifyDataSetChanged()
+                        }
+                    }
+                }
             }
         }
     }
@@ -170,17 +192,15 @@ class TasksFragment : Fragment() {
 
     private fun editTask(item: TaskWithSubject) {
         viewLifecycleOwner.lifecycleScope.launch {
-            openEditor(viewModel.find(item.id), viewModel.subjects.value, viewModel.categories.value)
+            openEditor(viewModel.find(item.id))
         }
     }
 
-    private fun openEditor(
-        task: Task?,
-        subjects: List<com.example.kronos.data.local.Subject>,
-        categories: List<Category>
-    ) {
-        TaskEditorBottomSheet.new(task, subjects, categories)
-            .show(parentFragmentManager, "taskEditor")
+    private fun openEditor(task: Task?) {
+        taskEditor = TaskEditorBottomSheet.new(
+            task, viewModel.subjects.value, viewModel.categories.value
+        )
+        taskEditor?.show(parentFragmentManager, "taskEditor")
     }
 
     private fun handleResult(result: Bundle) {
@@ -193,6 +213,8 @@ class TasksFragment : Fragment() {
         }
         val date = result.getString(TaskEditorBottomSheet.RESULT_DATE)?.let(LocalDate::parse)
         val time = result.getString(TaskEditorBottomSheet.RESULT_TIME)?.let(LocalTime::parse)
+        val reminder = result.getString(TaskEditorBottomSheet.RESULT_REMINDER)
+            ?.let(java.time.LocalDateTime::parse)
         viewModel.save(
             Task(
                 id = id,
@@ -205,20 +227,31 @@ class TasksFragment : Fragment() {
                 categoryId = result.getLong(TaskEditorBottomSheet.RESULT_CATEGORY_ID)
                     .takeIf { it != 0L },
                 priority = result.getInt(TaskEditorBottomSheet.RESULT_PRIORITY),
-                done = result.getBoolean(TaskEditorBottomSheet.RESULT_DONE)
+                done = result.getBoolean(TaskEditorBottomSheet.RESULT_DONE),
+                reminderTime = reminder
             )
         )
     }
 
     private fun showCategories() {
-        val categories = viewModel.categories.value
-        MaterialAlertDialogBuilder(requireContext())
+        val adapter = ArrayAdapter(
+            requireContext(), android.R.layout.simple_list_item_1,
+            viewModel.categories.value.map(Category::name).toMutableList()
+        )
+        categoriesDialogAdapter = adapter
+        val dialog = MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.manage_categories)
-            .setItems(categories.map { it.name }.toTypedArray()) { _, which ->
-                editCategory(categories[which])
+            .setAdapter(adapter) { _, which ->
+                editCategory(viewModel.categories.value.getOrNull(which))
             }
             .setPositiveButton(R.string.add_category) { _, _ -> editCategory(null) }
-            .show()
+            .create()
+        categoriesDialog = dialog
+        dialog.setOnDismissListener {
+            categoriesDialog = null
+            categoriesDialogAdapter = null
+        }
+        dialog.show()
     }
 
     private fun editCategory(category: Category?) {
@@ -294,11 +327,19 @@ class TasksFragment : Fragment() {
                         color.error = getString(R.string.invalid_color)
                     }
                 } else {
-                    viewModel.saveCategory(
-                        category?.copy(name = value, color = colorValue)
-                            ?: Category(name = value, color = colorValue)
-                    )
-                    shown.dismiss()
+                    val duplicate = viewModel.categories.value.any {
+                        it.id != category?.id &&
+                            it.name.trim().equals(value, ignoreCase = true)
+                    }
+                    if (duplicate) {
+                        name.error = getString(R.string.duplicate_category)
+                    } else {
+                        viewModel.saveCategory(
+                            category?.copy(name = value, color = colorValue)
+                                ?: Category(name = value, color = colorValue)
+                        )
+                        shown.dismiss()
+                    }
                 }
             }
         }
@@ -319,6 +360,8 @@ class TasksFragment : Fragment() {
 
     override fun onDestroyView() {
         binding.taskList.adapter = null
+        taskEditor = null
+        categoriesDialog?.dismiss()
         _binding = null
         super.onDestroyView()
     }

@@ -14,6 +14,7 @@ import com.example.kronos.data.ExamRepository
 import com.example.kronos.data.local.DatabaseProvider
 import com.example.kronos.data.local.Exam
 import com.example.kronos.databinding.FragmentExamsBinding
+import com.example.kronos.notifications.TaskExamReminderScheduler
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -23,7 +24,10 @@ class ExamsFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: ExamViewModel by viewModels {
         val db = DatabaseProvider.get(requireContext())
-        ExamViewModel.Factory(ExamRepository(db.examDao(), db.subjectDao()))
+        ExamViewModel.Factory(
+            ExamRepository(db.examDao(), db.subjectDao()),
+            TaskExamReminderScheduler(requireContext())
+        )
     }
     private val upcomingAdapter = ExamAdapter(::editExam)
     private val pastAdapter = ExamAdapter(::editExam)

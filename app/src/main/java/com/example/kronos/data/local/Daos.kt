@@ -18,7 +18,9 @@ data class ClassSessionWithSubject(
     val room: String?,
     val teacher: String?,
     val weekNumber: Int,
-    val notes: String?
+    val notes: String?,
+    val reminderEnabled: Boolean,
+    val reminderOffsetMinutes: Int?
 )
 
 @Dao
@@ -29,8 +31,8 @@ interface SubjectDao {
     @Query("SELECT * FROM subjects WHERE id = :id")
     suspend fun findById(id: Long): Subject?
 
-    @Query("SELECT * FROM subjects WHERE name = :name LIMIT 1")
-    suspend fun findByName(name: String): Subject?
+    @Query("SELECT * FROM subjects WHERE lower(trim(name)) = :normalizedName ORDER BY id LIMIT 1")
+    suspend fun findByNormalizedName(normalizedName: String): Subject?
 
     @Update
     suspend fun update(subject: Subject)
@@ -45,7 +47,7 @@ interface ClassSessionDao {
         """
         SELECT c.id, c.subjectId, s.name AS subjectName, s.color AS subjectColor,
                c.dayOfWeek, c.startTime, c.endTime, c.room, c.teacher,
-               c.weekNumber, c.notes
+               c.weekNumber, c.notes, c.reminderEnabled, c.reminderOffsetMinutes
         FROM class_sessions c
         INNER JOIN subjects s ON s.id = c.subjectId
         WHERE c.dayOfWeek = :dayOfWeek
@@ -59,7 +61,7 @@ interface ClassSessionDao {
         """
         SELECT c.id, c.subjectId, s.name AS subjectName, s.color AS subjectColor,
                c.dayOfWeek, c.startTime, c.endTime, c.room, c.teacher,
-               c.weekNumber, c.notes
+               c.weekNumber, c.notes, c.reminderEnabled, c.reminderOffsetMinutes
         FROM class_sessions c
         INNER JOIN subjects s ON s.id = c.subjectId
         WHERE c.weekNumber = 0 OR c.weekNumber = :weekNumber
@@ -79,6 +81,23 @@ interface ClassSessionDao {
 
     @Delete
     suspend fun delete(session: ClassSession)
+
+    @Query("SELECT * FROM class_sessions")
+    suspend fun getAll(): List<ClassSession>
+
+    @Query(
+        """
+        SELECT c.id, c.subjectId, s.name AS subjectName, s.color AS subjectColor,
+               c.dayOfWeek, c.startTime, c.endTime, c.room, c.teacher,
+               c.weekNumber, c.notes, c.reminderEnabled, c.reminderOffsetMinutes
+        FROM class_sessions c
+        INNER JOIN subjects s ON s.id = c.subjectId
+        """
+    )
+    suspend fun getAllWithSubjects(): List<ClassSessionWithSubject>
+
+    @Query("SELECT * FROM class_sessions WHERE id = :id")
+    suspend fun getById(id: Long): ClassSession?
 }
 
 data class TaskWithSubject(
@@ -120,6 +139,9 @@ interface TaskDao {
     @Query("SELECT * FROM tasks WHERE id = :id")
     suspend fun findById(id: Long): Task?
 
+    @Query("SELECT * FROM tasks")
+    suspend fun getAll(): List<Task>
+
     @Delete
     suspend fun delete(task: Task)
 
@@ -143,6 +165,9 @@ interface CategoryDao {
 
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun count(): Int
+
+    @Query("SELECT * FROM categories WHERE lower(trim(name)) = :normalizedName ORDER BY id LIMIT 1")
+    suspend fun findByNormalizedName(normalizedName: String): Category?
 }
 
 data class ExamWithSubject(
@@ -182,12 +207,18 @@ interface ExamDao {
 
     @Query("SELECT * FROM exams WHERE id = :id")
     suspend fun findById(id: Long): Exam?
+
+    @Query("SELECT * FROM exams")
+    suspend fun getAll(): List<Exam>
 }
 
 @Dao
 interface HolidayDao {
     @Query("SELECT * FROM holidays ORDER BY startDate, endDate, name")
     fun observeAll(): Flow<List<Holiday>>
+
+    @Query("SELECT * FROM holidays")
+    suspend fun getAll(): List<Holiday>
 
     @Insert
     suspend fun insert(holiday: Holiday): Long

@@ -13,7 +13,7 @@ import androidx.room.TypeConverters
         Exam::class,
         Holiday::class
     ],
-    version = 6,
+    version = 8,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

@@ -56,6 +56,39 @@ class SettingsStore(context: Context) {
         get() = preferences.getBoolean(KEY_PURE_BLACK, false)
         set(value) = preferences.edit { putBoolean(KEY_PURE_BLACK, value) }
 
+    var defaultReminderOffsetMinutes: Int
+        get() = preferences.getInt(KEY_DEFAULT_REMINDER_OFFSET, 10)
+        set(value) {
+            require(value >= 0)
+            preferences.edit { putInt(KEY_DEFAULT_REMINDER_OFFSET, value) }
+        }
+
+        var taskRemindersEnabled: Boolean
+            get() = preferences.getBoolean(KEY_TASK_REMINDERS, true)
+            set(value) = preferences.edit { putBoolean(KEY_TASK_REMINDERS, value) }
+
+    var classRemindersEnabled: Boolean
+            get() = preferences.getBoolean(KEY_CLASS_REMINDERS, true)
+            set(value) = preferences.edit { putBoolean(KEY_CLASS_REMINDERS, value) }
+
+        var examRemindersEnabled: Boolean
+            get() = preferences.getBoolean(KEY_EXAM_REMINDERS, true)
+            set(value) = preferences.edit { putBoolean(KEY_EXAM_REMINDERS, value) }
+
+        var examDayBeforeEnabled: Boolean
+            get() = preferences.getBoolean(KEY_EXAM_DAY_BEFORE, true)
+            set(value) = preferences.edit { putBoolean(KEY_EXAM_DAY_BEFORE, value) }
+
+        var examHourBeforeEnabled: Boolean
+            get() = preferences.getBoolean(KEY_EXAM_HOUR_BEFORE, true)
+            set(value) = preferences.edit { putBoolean(KEY_EXAM_HOUR_BEFORE, value) }
+
+        var examReminderHour: LocalTime
+            get() = LocalTime.parse(
+                preferences.getString(KEY_EXAM_HOUR, "09:00") ?: "09:00"
+            )
+            set(value) = preferences.edit { putString(KEY_EXAM_HOUR, value.toString()) }
+
     companion object {
         private const val NAME = "kronos_settings"
         private const val KEY_ROTATION_LENGTH = "rotation_length"
@@ -63,6 +96,13 @@ class SettingsStore(context: Context) {
         private const val KEY_PERIODS = "class_periods"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_PURE_BLACK = "pure_black"
+        private const val KEY_DEFAULT_REMINDER_OFFSET = "default_reminder_offset"
+        private const val KEY_TASK_REMINDERS = "task_reminders"
+        private const val KEY_CLASS_REMINDERS = "class_reminders"
+        private const val KEY_EXAM_REMINDERS = "exam_reminders"
+        private const val KEY_EXAM_DAY_BEFORE = "exam_day_before"
+        private const val KEY_EXAM_HOUR_BEFORE = "exam_hour_before"
+        private const val KEY_EXAM_HOUR = "exam_reminder_hour"
     }
 }
 

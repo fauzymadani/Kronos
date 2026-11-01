@@ -8,6 +8,7 @@ import com.example.kronos.data.local.SubjectDao
 import com.example.kronos.data.local.Holiday
 import com.example.kronos.data.local.HolidayDao
 import kotlinx.coroutines.flow.Flow
+import com.example.kronos.lib.normalizeName
 
 class TimetableRepository(
     private val sessions: ClassSessionDao,
@@ -36,10 +37,13 @@ class TimetableRepository(
         room: String?,
         teacher: String?,
         notes: String?,
-        weekNumber: Int
+        weekNumber: Int,
+        reminderEnabled: Boolean,
+        reminderOffsetMinutes: Int?
     ) {
         val trimmedName = subjectName.trim()
-        val subject = subjects.findByName(trimmedName)
+        require(trimmedName.isNotEmpty())
+        val subject = subjects.findByNormalizedName(normalizeName(trimmedName))
         val subjectId = if (subject == null) {
             subjects.insert(Subject(name = trimmedName, color = color))
         } else {
@@ -55,7 +59,9 @@ class TimetableRepository(
             room = room?.trim()?.takeIf(String::isNotEmpty),
             teacher = teacher?.trim()?.takeIf(String::isNotEmpty),
             notes = notes?.trim()?.takeIf(String::isNotEmpty),
-            weekNumber = weekNumber
+            weekNumber = weekNumber,
+            reminderEnabled = reminderEnabled,
+            reminderOffsetMinutes = reminderOffsetMinutes
         )
         if (existing == null) sessions.insert(session) else sessions.update(session)
     }

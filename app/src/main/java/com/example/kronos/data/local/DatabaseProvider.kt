@@ -16,7 +16,8 @@ object DatabaseProvider {
                 KronosDatabase::class.java,
                 "kronos.db"
             ).addMigrations(
-                MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6
+                MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                MIGRATION_6_7, MIGRATION_7_8
             ).build().also { instance = it }
         }
 
@@ -65,6 +66,128 @@ object DatabaseProvider {
             db.execSQL("ALTER TABLE holidays_new RENAME TO holidays")
             db.execSQL("CREATE INDEX index_holidays_startDate ON holidays(startDate)")
             db.execSQL("CREATE INDEX index_holidays_endDate ON holidays(endDate)")
+        }
+    }
+
+    private val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE class_sessions ADD COLUMN reminderEnabled INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execSQL(
+                "ALTER TABLE class_sessions ADD COLUMN reminderOffsetMinutes INTEGER"
+            )
+        }
+    }
+
+    private val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("PRAGMA foreign_keys = OFF")
+
+            db.execSQL(
+                """
+                UPDATE tasks
+                SET categoryId = (
+                    SELECT MIN(duplicate.id)
+                    FROM categories duplicate
+                    JOIN categories original
+                      ON lower(trim(duplicate.name)) = lower(trim(original.name))
+                    WHERE original.id = tasks.categoryId
+                )
+                WHERE categoryId IS NOT NULL
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                UPDATE class_sessions
+                SET subjectId = (
+                    SELECT MIN(duplicate.id)
+                    FROM subjects duplicate
+                    JOIN subjects original
+                      ON lower(trim(duplicate.name)) = lower(trim(original.name))
+                    WHERE original.id = class_sessions.subjectId
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                UPDATE tasks
+                SET subjectId = (
+                    SELECT MIN(duplicate.id)
+                    FROM subjects duplicate
+                    JOIN subjects original
+                      ON lower(trim(duplicate.name)) = lower(trim(original.name))
+                    WHERE original.id = tasks.subjectId
+                )
+                WHERE subjectId IS NOT NULL
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                UPDATE exams
+                SET subjectId = (
+                    SELECT MIN(duplicate.id)
+                    FROM subjects duplicate
+                    JOIN subjects original
+                      ON lower(trim(duplicate.name)) = lower(trim(original.name))
+                    WHERE original.id = exams.subjectId
+                )
+                WHERE subjectId IS NOT NULL
+                """.trimIndent()
+            )
+
+            db.execSQL(
+                """
+                CREATE TABLE subjects_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    name TEXT NOT NULL COLLATE NOCASE,
+                    code TEXT,
+                    color TEXT
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO subjects_new (id, name, code, color)
+                SELECT id, trim(name), code, color
+                FROM subjects
+                WHERE id IN (
+                    SELECT MIN(id)
+                    FROM subjects
+                    GROUP BY lower(trim(name))
+                )
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE subjects")
+            db.execSQL("ALTER TABLE subjects_new RENAME TO subjects")
+            db.execSQL("CREATE UNIQUE INDEX index_subjects_name ON subjects(name)")
+
+            db.execSQL(
+                """
+                CREATE TABLE categories_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    name TEXT NOT NULL COLLATE NOCASE,
+                    color TEXT
+                )
+                """.trimIndent()
+            )
+            db.execSQL(
+                """
+                INSERT INTO categories_new (id, name, color)
+                SELECT id, trim(name), color
+                FROM categories
+                WHERE id IN (
+                    SELECT MIN(id)
+                    FROM categories
+                    GROUP BY lower(trim(name))
+                )
+                """.trimIndent()
+            )
+            db.execSQL("DROP TABLE categories")
+            db.execSQL("ALTER TABLE categories_new RENAME TO categories")
+            db.execSQL("CREATE UNIQUE INDEX index_categories_name ON categories(name)")
+
+            db.execSQL("PRAGMA foreign_keys = ON")
         }
     }
 }

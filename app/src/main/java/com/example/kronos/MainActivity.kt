@@ -24,4 +24,23 @@ class MainActivity : AppCompatActivity() {
         findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottomNavigation)
             .setupWithNavController(navHost.navController)
     }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val day = intent.getIntExtra(EXTRA_REMINDER_DAY, 0)
+        if (day in 1..7) {
+            val navHost = supportFragmentManager.findFragmentById(R.id.nav_host)
+                as? NavHostFragment ?: return
+            if (navHost.navController.currentDestination?.id != R.id.timetableFragment) {
+                navHost.navController.navigate(R.id.timetableFragment)
+            }
+            (navHost.childFragmentManager.fragments.firstOrNull() as?
+                com.example.kronos.ui.timetable.TimetableFragment)?.selectReminderDay(day)
+        }
+    }
+
+    companion object {
+        const val EXTRA_REMINDER_DAY = "reminder_day_of_week"
+    }
 }

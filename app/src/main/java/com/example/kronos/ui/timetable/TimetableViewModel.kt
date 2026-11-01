@@ -61,9 +61,14 @@ class TimetableViewModel(
         room: String?,
         teacher: String?,
         notes: String?,
-        weekNumber: Int
+        weekNumber: Int,
+        reminderEnabled: Boolean,
+        reminderOffsetMinutes: Int?
     ) = viewModelScope.launch {
-        repository.save(existing, subject, color, dayOfWeek, start, end, room, teacher, notes, weekNumber)
+        repository.save(
+            existing, subject, color, dayOfWeek, start, end, room, teacher, notes,
+            weekNumber, reminderEnabled, reminderOffsetMinutes
+        )
     }
 
     fun delete(session: ClassSession) = viewModelScope.launch {

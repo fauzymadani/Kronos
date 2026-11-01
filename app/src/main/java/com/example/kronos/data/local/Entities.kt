@@ -1,5 +1,6 @@
 package com.example.kronos.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -8,10 +9,13 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 
-@Entity(tableName = "subjects")
+@Entity(
+    tableName = "subjects",
+    indices = [Index(value = ["name"], unique = true)]
+)
 data class Subject(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String,
+    @ColumnInfo(collate = ColumnInfo.NOCASE) val name: String,
     val code: String? = null,
     val color: String? = null
 )
@@ -37,7 +41,9 @@ data class ClassSession(
     val room: String? = null,
     val teacher: String? = null,
     val weekNumber: Int = 0,
-    val notes: String? = null
+    val notes: String? = null,
+    val reminderEnabled: Boolean = false,
+    val reminderOffsetMinutes: Int? = null
 )
 
 @Entity(
@@ -46,7 +52,7 @@ data class ClassSession(
 )
 data class Category(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val name: String,
+    @ColumnInfo(collate = ColumnInfo.NOCASE) val name: String,
     val color: String? = null
 )
 

@@ -20,6 +20,8 @@ import com.example.kronos.data.local.ClassSessionWithSubject
 import com.example.kronos.data.local.DatabaseProvider
 import com.example.kronos.data.local.ExamWithSubject
 import com.example.kronos.data.local.Holiday
+import com.example.kronos.notifications.ClassReminderScheduler
+import com.example.kronos.notifications.TaskExamReminderScheduler
 import com.example.kronos.lib.isDateInHolidayRange
 import com.example.kronos.ui.exams.ExamAdapter
 import com.example.kronos.databinding.FragmentTimetableBinding
@@ -32,6 +34,9 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.text.InputType
 import android.widget.TextView
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import com.google.android.material.switchmaterial.SwitchMaterial
 
 class TimetableFragment : Fragment() {
@@ -52,6 +57,14 @@ class TimetableFragment : Fragment() {
     private var holidays: List<Holiday> = emptyList()
     private var daySessions: List<ClassSessionWithSubject> = emptyList()
     private val examAdapter = ExamAdapter {}
+    private val reminderScheduler get() = ClassReminderScheduler(requireContext())
+
+    fun selectReminderDay(day: Int) {
+        if (day in 1..7 && _binding != null) {
+            binding.dayTabs.getTabAt(day - 1)?.select()
+            showDayView()
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, state: Bundle?): View {
         _binding = FragmentTimetableBinding.inflate(inflater, container, false)
@@ -68,6 +81,7 @@ class TimetableFragment : Fragment() {
                 R.id.month_view -> showMonthView()
                 R.id.settings -> showSettings()
                 R.id.theme_settings -> showThemeSettings()
+                R.id.reminder_settings -> showReminderSettings()
                 else -> false
             }
         }
@@ -80,7 +94,10 @@ class TimetableFragment : Fragment() {
         binding.monthExams.layoutManager = LinearLayoutManager(requireContext())
         binding.monthExams.adapter = examAdapter
         DAYS.forEach { binding.dayTabs.addTab(binding.dayTabs.newTab().setText(it)) }
-        binding.dayTabs.getTabAt(0)?.select()
+        val reminderDay = requireActivity().intent.getIntExtra(
+            com.example.kronos.MainActivity.EXTRA_REMINDER_DAY, 0
+        )
+        binding.dayTabs.getTabAt((reminderDay - 1).coerceIn(0, 6))?.select()
         binding.dayTabs.addOnTabSelectedListener(object :
             com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
@@ -119,11 +136,11 @@ class TimetableFragment : Fragment() {
                         binding.weekGrid.setSessions(it)
                         refreshMonth()
                     }
-                    launch {
-                        DatabaseProvider.get(requireContext()).examDao().observeAll().collect {
-                            monthExams = it
-                            refreshMonth()
-                        }
+                }
+                launch {
+                    DatabaseProvider.get(requireContext()).examDao().observeAll().collect {
+                        monthExams = it
+                        refreshMonth()
                     }
                 }
                 launch {
@@ -236,6 +253,72 @@ class TimetableFragment : Fragment() {
         return true
     }
 
+    private fun showReminderSettings(): Boolean {
+        val settings = SettingsStore(requireContext())
+        val values = intArrayOf(5, 10, 15, 30)
+        val labels = values.map { getString(R.string.reminder_minutes_before, it) }.toTypedArray()
+        val selected = values.indexOf(settings.defaultReminderOffsetMinutes).coerceAtLeast(0)
+        val layout = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 0, 48, 0)
+        }
+        val tasks = SwitchMaterial(requireContext()).apply {
+            text = getString(R.string.task_reminders)
+            isChecked = settings.taskRemindersEnabled
+        }
+        val classes = SwitchMaterial(requireContext()).apply {
+            text = getString(R.string.class_reminder_enabled)
+            isChecked = settings.classRemindersEnabled
+        }
+        val exams = SwitchMaterial(requireContext()).apply {
+            text = getString(R.string.exam_reminders)
+            isChecked = settings.examRemindersEnabled
+        }
+        val dayBefore = SwitchMaterial(requireContext()).apply {
+            text = getString(R.string.exam_day_before)
+            isChecked = settings.examDayBeforeEnabled
+        }
+        val hourBefore = SwitchMaterial(requireContext()).apply {
+            text = getString(R.string.exam_hour_before)
+            isChecked = settings.examHourBeforeEnabled
+        }
+        val examHour = EditText(requireContext()).apply {
+            hint = getString(R.string.exam_reminder_hour)
+            inputType = InputType.TYPE_CLASS_DATETIME
+            setText(settings.examReminderHour.toString())
+        }
+        layout.addView(classes); layout.addView(tasks); layout.addView(exams); layout.addView(dayBefore); layout.addView(hourBefore)
+        layout.addView(examHour)
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.reminder_settings)
+            .setView(layout)
+            .setSingleChoiceItems(labels, selected) { dialog, which ->
+                settings.defaultReminderOffsetMinutes = values[which]
+                dialog.dismiss()
+            }
+            .setNeutralButton(R.string.open_channel_settings) { _, _ ->
+                startActivity(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, requireContext().packageName)
+                        data = Uri.parse("package:${requireContext().packageName}")
+                    }
+                )
+            }
+            .setPositiveButton(R.string.save) { _, _ ->
+                settings.taskRemindersEnabled = tasks.isChecked
+                settings.classRemindersEnabled = classes.isChecked
+                settings.examRemindersEnabled = exams.isChecked
+                settings.examDayBeforeEnabled = dayBefore.isChecked
+                settings.examHourBeforeEnabled = hourBefore.isChecked
+                runCatching { settings.examReminderHour = LocalTime.parse(examHour.text.toString()) }
+                viewLifecycleOwner.lifecycleScope.launch {
+                    TaskExamReminderScheduler(requireContext()).rescheduleAll()
+                }
+            }
+            .show()
+        return true
+    }
+
     private fun editClass(item: ClassSessionWithSubject) {
         ClassEditorBottomSheet.new(item.dayOfWeek, item)
             .show(parentFragmentManager, "classEditor")
@@ -245,7 +328,8 @@ class TimetableFragment : Fragment() {
         val id = result.getLong(ClassEditorBottomSheet.RESULT_ID)
         if (result.getBoolean(ClassEditorBottomSheet.RESULT_DELETE)) {
             viewLifecycleOwner.lifecycleScope.launch {
-                viewModel.findSession(id)?.let(viewModel::delete)
+                viewModel.findSession(id)?.let { viewModel.delete(it).join() }
+                reminderScheduler.cancel(id)
             }
             return
         }
@@ -260,8 +344,15 @@ class TimetableFragment : Fragment() {
                 room = result.getString(ClassEditorBottomSheet.RESULT_ROOM),
                 teacher = result.getString(ClassEditorBottomSheet.RESULT_TEACHER),
                 notes = result.getString(ClassEditorBottomSheet.RESULT_NOTES),
-                weekNumber = result.getInt(ClassEditorBottomSheet.RESULT_WEEK, 0)
-            )
+                weekNumber = result.getInt(ClassEditorBottomSheet.RESULT_WEEK, 0),
+                reminderEnabled = result.getBoolean(
+                    ClassEditorBottomSheet.RESULT_REMINDER_ENABLED
+                ),
+                reminderOffsetMinutes = result.getInt(
+                    ClassEditorBottomSheet.RESULT_REMINDER_OFFSET, -1
+                ).takeUnless { it < 0 }
+            ).join()
+            reminderScheduler.rescheduleAll()
         }
     }
 
@@ -272,12 +363,14 @@ class TimetableFragment : Fragment() {
             .setTitle(R.string.rotation_length)
             .setSingleChoiceItems(choices, settings.rotationLength - 1) { dialog, which ->
                 settings.rotationLength = which + 1
+                viewLifecycleOwner.lifecycleScope.launch { reminderScheduler.rescheduleAll() }
                 dialog.dismiss()
             }
             .setPositiveButton(R.string.semester_start) { _, _ ->
                 val date = settings.semesterStart
                 android.app.DatePickerDialog(requireContext(), { _, year, month, day ->
                     settings.semesterStart = java.time.LocalDate.of(year, month + 1, day)
+                    viewLifecycleOwner.lifecycleScope.launch { reminderScheduler.rescheduleAll() }
                 }, date.year, date.monthValue - 1, date.dayOfMonth).show()
             }
             .setNeutralButton(R.string.configure_periods) { _, _ -> showPeriodsSettings() }
@@ -298,6 +391,7 @@ class TimetableFragment : Fragment() {
             ThemeMode.DARK -> 1
             ThemeMode.AUTO_BATTERY -> 2
         }
+
         val content = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 0, 48, 0)
@@ -395,7 +489,10 @@ class TimetableFragment : Fragment() {
             .setPositiveButton(R.string.save, null)
         if (existing != null) {
             builder.setNeutralButton(R.string.delete_holiday) { _, _ ->
-                viewModel.deleteHoliday(existing)
+                viewLifecycleOwner.lifecycleScope.launch {
+                    viewModel.deleteHoliday(existing).join()
+                    reminderScheduler.rescheduleAll()
+                }
             }
         }
         val dialog = builder.create()
@@ -408,9 +505,12 @@ class TimetableFragment : Fragment() {
                     }
                     return@setOnClickListener
                 }
-                viewModel.saveHoliday(
-                    Holiday(existing?.id ?: 0L, trimmed, startDate, endDate)
-                )
+                viewLifecycleOwner.lifecycleScope.launch {
+                    viewModel.saveHoliday(
+                        Holiday(existing?.id ?: 0L, trimmed, startDate, endDate)
+                    ).join()
+                    reminderScheduler.rescheduleAll()
+                }
                 dialog.dismiss()
             }
         }

@@ -7,6 +7,7 @@ import com.example.kronos.data.local.Category
 import com.example.kronos.data.local.CategoryDao
 import com.example.kronos.data.local.Subject
 import com.example.kronos.data.local.SubjectDao
+import com.example.kronos.lib.normalizeName
 import kotlinx.coroutines.flow.Flow
 
 class TaskRepository(
@@ -35,6 +36,15 @@ class TaskRepository(
     suspend fun setDone(id: Long, done: Boolean) = tasks.setDone(id, done)
     suspend fun deleteCategory(category: Category) = categories.delete(category)
     suspend fun saveCategory(category: Category) {
-        if (category.id == 0L) categories.insert(category) else categories.update(category)
+        val normalized = normalizeName(category.name)
+        require(normalized.isNotEmpty())
+        val existing = categories.findByNormalizedName(normalized)
+        if (existing == null) {
+            categories.insert(category.copy(name = category.name.trim()))
+        } else if (existing.id != category.id) {
+            throw IllegalArgumentException("A category with this name already exists")
+        } else {
+            categories.update(category.copy(name = category.name.trim()))
+        }
     }
 }

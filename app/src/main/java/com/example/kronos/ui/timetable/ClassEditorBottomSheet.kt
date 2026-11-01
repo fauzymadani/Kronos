@@ -52,6 +52,26 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
         binding.teacher.setText(requireArguments().getString(ARG_TEACHER))
         binding.notes.setText(requireArguments().getString(ARG_NOTES))
         binding.weekNumber.setText(requireArguments().getInt(ARG_WEEK, 0).toString())
+        binding.reminderEnabled.isChecked = requireArguments().getBoolean(ARG_REMINDER_ENABLED, false)
+        val reminderOffsets = listOf(
+            getString(R.string.reminder_use_default),
+            getString(R.string.reminder_five_minutes),
+            getString(R.string.reminder_ten_minutes),
+            getString(R.string.reminder_fifteen_minutes),
+            getString(R.string.reminder_thirty_minutes)
+        )
+        binding.reminderOffset.adapter = ArrayAdapter(
+            requireContext(), android.R.layout.simple_spinner_dropdown_item, reminderOffsets
+        )
+        binding.reminderOffset.setSelection(
+            when (requireArguments().getInt(ARG_REMINDER_OFFSET, -1)) {
+                5 -> 1
+                10 -> 2
+                15 -> 3
+                30 -> 4
+                else -> 0
+            }
+        )
         periods = SettingsStore(requireContext()).periods
         val periodLabels = listOf(getString(R.string.custom_times)) + periods.map {
             "${it.name}, ${it.start} - ${it.end}"
@@ -160,6 +180,17 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
             putString(RESULT_TEACHER, binding.teacher.text?.toString())
             putString(RESULT_NOTES, binding.notes.text?.toString())
             putInt(RESULT_WEEK, binding.weekNumber.text?.toString()?.toIntOrNull()?.coerceIn(0, 4) ?: 0)
+            putBoolean(RESULT_REMINDER_ENABLED, binding.reminderEnabled.isChecked)
+            putInt(
+                RESULT_REMINDER_OFFSET,
+                when (binding.reminderOffset.selectedItemPosition) {
+                    1 -> 5
+                    2 -> 10
+                    3 -> 15
+                    4 -> 30
+                    else -> -1
+                }
+            )
         })
         dismiss()
     }
@@ -182,6 +213,8 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
         const val RESULT_TEACHER = "teacher"
         const val RESULT_NOTES = "notes"
         const val RESULT_WEEK = "week"
+        const val RESULT_REMINDER_ENABLED = "reminder_enabled"
+        const val RESULT_REMINDER_OFFSET = "reminder_offset"
         private const val ARG_DAY = "arg_day"
         private const val ARG_SESSION = "arg_session"
         private const val ARG_SUBJECT = "arg_subject"
@@ -192,6 +225,8 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
         private const val ARG_WEEK = "arg_week"
         private const val ARG_START = "arg_start"
         private const val ARG_END = "arg_end"
+        private const val ARG_REMINDER_ENABLED = "arg_reminder_enabled"
+        private const val ARG_REMINDER_OFFSET = "arg_reminder_offset"
         private val COLORS = listOf("#3F51B5", "#008577", "#E91E63", "#FF9800", "#795548", "#607D8B")
 
         fun new(day: Int, item: com.example.kronos.data.local.ClassSessionWithSubject? = null) =
@@ -208,6 +243,8 @@ class ClassEditorBottomSheet : BottomSheetDialogFragment() {
                         putInt(ARG_WEEK, it.weekNumber)
                         putString(ARG_START, it.startTime)
                         putString(ARG_END, it.endTime)
+                        putBoolean(ARG_REMINDER_ENABLED, it.reminderEnabled)
+                        putInt(ARG_REMINDER_OFFSET, it.reminderOffsetMinutes ?: -1)
                     }
                 }
             }

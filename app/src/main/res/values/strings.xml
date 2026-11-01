@@ -75,6 +75,7 @@
     <string name="color_orange">Orange</string>
     <string name="color_red">Red</string>
     <string name="invalid_color">Invalid color</string>
+    <string name="duplicate_category">A category with this name already exists.</string>
     <string name="day_view">Day view</string>
     <string name="week_view">Week view</string>
     <string name="month_view">Month view</string>
@@ -82,4 +83,26 @@
     <string name="custom_times">Custom times</string>
     <string name="configure_periods">Configure periods</string>
     <string name="add_period">Add period</string>
+    <string name="class_reminder_enabled">Remind me before class</string>
+    <string name="reminder_use_default">Use default reminder time</string>
+    <string name="reminder_five_minutes">5 minutes before</string>
+    <string name="reminder_ten_minutes">10 minutes before</string>
+    <string name="reminder_fifteen_minutes">15 minutes before</string>
+    <string name="reminder_thirty_minutes">30 minutes before</string>
+    <string name="reminder_settings">Reminder default</string>
+    <string name="reminder_minutes_before">%1$d minutes before class</string>
+    <string name="class_reminder_title">Upcoming class</string>
+    <string name="class_reminder_text">%1$s starts soon</string>
+    <string name="task_reminder_channel">Task reminders</string>
+    <string name="exam_reminder_channel">Exam reminders</string>
+    <string name="reminder_title">Reminder</string>
+    <string name="reminder_notification_text">You have an upcoming reminder.</string>
+    <string name="task_reminders">Task reminders</string>
+    <string name="exam_reminders">Exam reminders</string>
+    <string name="exam_day_before">One day before</string>
+    <string name="exam_hour_before">One hour before</string>
+    <string name="exam_reminder_hour">Exam reminder hour</string>
+    <string name="open_channel_settings">Open system notification settings</string>
+    <string name="reminder_date">Reminder date</string>
+    <string name="reminder_time">Reminder time</string>
 </resources>
