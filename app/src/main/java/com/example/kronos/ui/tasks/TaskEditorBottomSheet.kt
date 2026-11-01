@@ -168,7 +168,7 @@ class TaskEditorBottomSheet : BottomSheetDialogFragment() {
 
     fun updateSubjects(value: List<Subject>) {
         subjects = value
-        if (!::subjectAdapter.isInitialized) return
+        if (!isAdded || _binding == null || !::subjectAdapter.isInitialized) return
         subjectAdapter.clear()
         subjectAdapter.add(getString(R.string.no_subject))
         subjectAdapter.addAll(value.map(Subject::name))
@@ -178,7 +178,7 @@ class TaskEditorBottomSheet : BottomSheetDialogFragment() {
 
     fun updateCategories(value: List<Category>) {
         categories = value
-        if (!::categoryAdapter.isInitialized) return
+        if (!isAdded || _binding == null || !::categoryAdapter.isInitialized) return
         categoryAdapter.clear()
         categoryAdapter.add(getString(R.string.no_category))
         categoryAdapter.addAll(value.map(Category::name))
@@ -186,8 +186,16 @@ class TaskEditorBottomSheet : BottomSheetDialogFragment() {
         binding.category.setSelection(value.indexOfFirst { it.id == selectedCategoryId } + 1)
     }
 
+    override fun onDestroy() {
+        if (isAdded) {
+            parentFragmentManager.setFragmentResult(CLOSED, Bundle.EMPTY)
+        }
+        super.onDestroy()
+    }
+
     companion object {
         const val REQUEST = "task_editor"
+        const val CLOSED = "task_editor_closed"
         const val RESULT_ID = "id"; const val RESULT_DELETE = "delete"
         const val RESULT_TITLE = "title"; const val RESULT_NOTES = "notes"
         const val RESULT_DATE = "date"; const val RESULT_TIME = "time"

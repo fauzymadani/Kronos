@@ -10,7 +10,12 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.example.kronos.data.SettingsStore
 import com.example.kronos.data.ThemeMode
 import com.example.kronos.notifications.ClassReminderScheduler
+import com.example.kronos.notifications.TaskExamReminderScheduler
 import com.example.kronos.notifications.TaskExamReminderReceiver
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class KronosApplication : Application() {
     override fun onCreate() {
@@ -31,6 +36,11 @@ class KronosApplication : Application() {
                 .build()
             val notificationManager = getSystemService(NotificationManager::class.java)
             listOf(
+                ClassReminderScheduler.LEGACY_CHANNEL_ID,
+                TaskExamReminderReceiver.LEGACY_TASK_CHANNEL_ID,
+                TaskExamReminderReceiver.LEGACY_EXAM_CHANNEL_ID
+            ).forEach(notificationManager::deleteNotificationChannel)
+            listOf(
                 ClassReminderScheduler.CHANNEL_ID to ClassReminderScheduler.CHANNEL_NAME,
                 TaskExamReminderReceiver.TASK_CHANNEL_ID to getString(R.string.task_reminder_channel),
                 TaskExamReminderReceiver.EXAM_CHANNEL_ID to getString(R.string.exam_reminder_channel)
@@ -40,6 +50,9 @@ class KronosApplication : Application() {
                         setSound(sound, audioAttributes)
                     }
                 )
+            }
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                TaskExamReminderScheduler(this@KronosApplication).rescheduleAll()
             }
         }
     }

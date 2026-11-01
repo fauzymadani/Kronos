@@ -125,7 +125,8 @@ class ClassReminderScheduler(
         HolidayRange(holiday.startDate, holiday.endDate)
 
     companion object {
-        const val CHANNEL_ID = "class_reminders"
+        const val CHANNEL_ID = "class_reminders_v2"
+        const val LEGACY_CHANNEL_ID = "class_reminders"
         const val CHANNEL_NAME = "Class reminders"
         const val TASK_REQUEST_OFFSET = 600_000_000
         const val EXAM_REQUEST_OFFSET = 1_200_000_000

@@ -7,6 +7,7 @@
     <color name="background">#FFFBFE</color>
     <color name="surface">#FFFFFFFF</color>
     <color name="on_surface">#FF1C1B1F</color>
+    <color name="on_surface_variant">#FF77747E</color>
     <color name="amoled_background">#FF000000</color>
     <color name="amoled_surface">#FF121212</color>
     <color name="grid_line">#FFD0D0D0</color>

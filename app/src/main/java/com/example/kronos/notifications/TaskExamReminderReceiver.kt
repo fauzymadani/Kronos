@@ -37,8 +37,10 @@ class TaskExamReminderReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val TASK_CHANNEL_ID = "task_reminders"
-        const val EXAM_CHANNEL_ID = "exam_reminders"
+        const val TASK_CHANNEL_ID = "task_reminders_v2"
+        const val EXAM_CHANNEL_ID = "exam_reminders_v2"
+        const val LEGACY_TASK_CHANNEL_ID = "task_reminders"
+        const val LEGACY_EXAM_CHANNEL_ID = "exam_reminders"
         const val EXTRA_ITEM_ID = "reminder_item_id"
         const val EXTRA_TITLE = "reminder_title"
         const val EXTRA_CHANNEL_ID = "reminder_channel_id"

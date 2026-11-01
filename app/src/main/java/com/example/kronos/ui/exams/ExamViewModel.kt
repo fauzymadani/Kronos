@@ -39,6 +39,7 @@ class ExamViewModel(
         reminderScheduler.cancelExam(exam.id)
     }
     suspend fun find(id: Long): Exam? = repository.find(id)
+    suspend fun getSubjects(): List<Subject> = repository.getSubjects()
 
     class Factory(
         private val repository: ExamRepository,

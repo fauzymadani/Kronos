@@ -42,7 +42,9 @@ class ExamsFragment : Fragment() {
         binding.pastList.layoutManager = LinearLayoutManager(requireContext())
         binding.upcomingList.adapter = upcomingAdapter
         binding.pastList.adapter = pastAdapter
-        binding.addExam.setOnClickListener { openEditor(null) }
+        binding.addExam.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch { openEditor(null) }
+        }
         binding.pastHeader.setOnClickListener {
             binding.pastList.visibility =
                 if (binding.pastList.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -71,8 +73,8 @@ class ExamsFragment : Fragment() {
         super.onResume()
     }
 
-    private fun openEditor(exam: Exam?) {
-        ExamEditorBottomSheet.new(exam, viewModel.subjects.value)
+    private suspend fun openEditor(exam: Exam?) {
+        ExamEditorBottomSheet.new(exam, viewModel.getSubjects())
             .show(parentFragmentManager, "exam_editor")
     }
 

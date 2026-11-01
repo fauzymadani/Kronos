@@ -74,6 +74,12 @@ class TasksFragment : Fragment() {
             TaskEditorBottomSheet.REQUEST,
             viewLifecycleOwner
         ) { _, result -> handleResult(result) }
+        parentFragmentManager.setFragmentResultListener(
+            TaskEditorBottomSheet.CLOSED,
+            viewLifecycleOwner
+        ) { _, _ ->
+            taskEditor = null
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.tasks.collect { submitFiltered(it) } }
