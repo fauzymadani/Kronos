@@ -3,6 +3,8 @@ package com.example.kronos
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import com.example.kronos.data.SettingsStore
@@ -22,27 +24,23 @@ class KronosApplication : Application() {
             }
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(
-                    ClassReminderScheduler.CHANNEL_ID,
-                    ClassReminderScheduler.CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_DEFAULT
+            val sound = Uri.parse("android.resource://$packageName/${R.raw.notification_7}")
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            listOf(
+                ClassReminderScheduler.CHANNEL_ID to ClassReminderScheduler.CHANNEL_NAME,
+                TaskExamReminderReceiver.TASK_CHANNEL_ID to getString(R.string.task_reminder_channel),
+                TaskExamReminderReceiver.EXAM_CHANNEL_ID to getString(R.string.exam_reminder_channel)
+            ).forEach { (id, name) ->
+                notificationManager.createNotificationChannel(
+                    NotificationChannel(id, name, NotificationManager.IMPORTANCE_DEFAULT).apply {
+                        setSound(sound, audioAttributes)
+                    }
                 )
-            )
-            getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(
-                    TaskExamReminderReceiver.TASK_CHANNEL_ID,
-                    getString(R.string.task_reminder_channel),
-                    NotificationManager.IMPORTANCE_DEFAULT
-                )
-            )
-            getSystemService(NotificationManager::class.java).createNotificationChannel(
-                NotificationChannel(
-                    TaskExamReminderReceiver.EXAM_CHANNEL_ID,
-                    getString(R.string.exam_reminder_channel),
-                    NotificationManager.IMPORTANCE_DEFAULT
-                )
-            )
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.example.kronos.data.SettingsStore
+import com.example.kronos.widget.TimetableWidgetProvider
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,6 +24,11 @@ class MainActivity : AppCompatActivity() {
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment
         findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottomNavigation)
             .setupWithNavController(navHost.navController)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        TimetableWidgetProvider.requestUpdate(applicationContext)
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
