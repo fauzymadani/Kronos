@@ -135,7 +135,9 @@ class DayTimelineView @JvmOverloads constructor(
             val y = yForMinute(hour).toFloat()
             canvas.drawLine(gridLeft, y, gridRight, y, linePaint)
             val labelIndex = (hour - ((layout.firstMinute / 60) * 60)) / 60
-            drawTimeLabel(canvas, labelText.getOrNull(labelIndex).orEmpty(), y)
+            if (labelIndex in labelText.indices) {
+                drawTimeLabel(canvas, labelText[labelIndex], y)
+            }
             val half = hour + 30
             if (half < layout.lastMinute) {
                 val halfY = yForMinute(half).toFloat()
@@ -158,11 +160,9 @@ class DayTimelineView @JvmOverloads constructor(
             val textLeft = rect.left + dp(6f)
             val textRight = rect.right - dp(6f)
             val baseline = rect.top + dp(16f)
-            drawFittedText(canvas, blockText[index], textLeft, textRight, baseline, boldTextPaint)
+            canvas.drawText(blockText[index], textLeft, baseline, boldTextPaint)
             if (roomText[index].isNotEmpty() && block.endMinute - block.startMinute >= 30) {
-                drawFittedText(
-                    canvas, roomText[index], textLeft, textRight, baseline + dp(16f), textPaint
-                )
+                canvas.drawText(roomText[index], textLeft, baseline + dp(16f), textPaint)
             }
             canvas.restore()
             index++
@@ -220,8 +220,16 @@ class DayTimelineView @JvmOverloads constructor(
             val bottom = max(top + dp(28f), yForMinute(block.endMinute) - blockGap)
             rects += RectF(left, top, right, bottom)
             blocks += block.session
-            blockText += block.session.subjectName
-            roomText += block.session.room.orEmpty()
+            blockText += fitText(
+                block.session.subjectName,
+                right - left - dp(12f),
+                boldTextPaint
+            )
+            roomText += fitText(
+                block.session.room.orEmpty(),
+                right - left - dp(12f),
+                textPaint
+            )
             val color = parseUserColor(block.session.subjectColor, primaryColor)
             blockColors += color
             textColors += contrastingTextColor(color)
@@ -257,6 +265,15 @@ class DayTimelineView @JvmOverloads constructor(
             text = text.dropLast(2) + "\u2026"
         }
         canvas.drawText(text, left, baseline, paint)
+    }
+
+    private fun fitText(value: String, maxWidth: Float, paint: Paint): String {
+        if (maxWidth <= 0f || paint.measureText(value) <= maxWidth) return value
+        var text = value
+        while (text.length > 1 && paint.measureText(text) > maxWidth) {
+            text = text.dropLast(2) + "\u2026"
+        }
+        return text
     }
 
     private fun formatMinute(minute: Int): String {

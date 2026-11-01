@@ -69,10 +69,6 @@ class ExamsFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        if (_binding != null) {
-            upcomingAdapter.notifyDataSetChanged()
-            pastAdapter.notifyDataSetChanged()
-        }
     }
 
     private fun openEditor(exam: Exam?) {
@@ -107,6 +103,8 @@ class ExamsFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        binding.upcomingList.adapter = null
+        binding.pastList.adapter = null
         _binding = null
         super.onDestroyView()
     }

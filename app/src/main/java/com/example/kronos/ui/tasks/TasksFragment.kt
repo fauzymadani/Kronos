@@ -94,7 +94,6 @@ class TasksFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        if (_binding != null) adapter.notifyDataSetChanged()
     }
 
     private fun setupFilters() {

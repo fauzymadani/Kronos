@@ -27,6 +27,10 @@ class TaskAdapter(
     override fun onBindViewHolder(holder: Holder, position: Int) = holder.bind(getItem(position))
 
     inner class Holder(private val binding: ItemTaskBinding) : RecyclerView.ViewHolder(binding.root) {
+        private val categoryBackground = GradientDrawable().apply {
+            cornerRadius = 16f
+        }
+
         fun bind(item: TaskWithSubject) {
             val settings = SettingsStore(binding.root.context)
             binding.title.text = item.title
@@ -44,10 +48,8 @@ class TaskAdapter(
                 runCatching {
                     val parsed = parseUserColor(color, binding.root.context.getColor(R.color.secondary))
                     binding.categoryChip.setTextColor(contrastingTextColor(parsed))
-                    binding.categoryChip.background = GradientDrawable().apply {
-                        setColor(parsed)
-                        cornerRadius = 16f
-                    }
+                    categoryBackground.setColor(parsed)
+                    binding.categoryChip.background = categoryBackground
                 }
             }
             val overdue = !item.done && item.dueDate?.let { LocalDate.parse(it).isBefore(LocalDate.now()) } == true

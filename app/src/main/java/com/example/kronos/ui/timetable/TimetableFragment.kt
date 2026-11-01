@@ -46,7 +46,6 @@ import com.google.android.material.switchmaterial.SwitchMaterial
 import androidx.activity.result.contract.ActivityResultContracts
 import com.example.kronos.data.BackupJsonCodec
 import com.example.kronos.data.BackupRepository
-import com.example.kronos.data.BackupValidationException
 import com.example.kronos.lib.classesCsv
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers

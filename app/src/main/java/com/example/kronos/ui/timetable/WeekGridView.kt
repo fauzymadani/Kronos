@@ -29,7 +29,8 @@ class WeekGridView @JvmOverloads constructor(
     var onClassClick: ((ClassSessionWithSubject) -> Unit)? = null
     private var sessions: List<ClassSessionWithSubject> = emptyList()
     private var holidayDates: Set<LocalDate> = emptySet()
-    private val blocks = ArrayList<Pair<RectF, ClassSessionWithSubject>>(24)
+    private val blockRects = ArrayList<RectF>(24)
+    private val blockSessions = ArrayList<ClassSessionWithSubject>(24)
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.grid_line)
         strokeWidth = dp(1f)
@@ -43,7 +44,11 @@ class WeekGridView @JvmOverloads constructor(
         textSize = dp(12f)
     }
     private val blockPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val holidayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.holiday_overlay)
+    }
     private val days = arrayOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    private val rectPool = ArrayList<RectF>(24)
     private val hourHeight = dp(56f)
     private val headerHeight = dp(36f)
     private val minimumTimeWidth = dp(42f)
@@ -52,11 +57,25 @@ class WeekGridView @JvmOverloads constructor(
     private val lastHour = 22
     private var firstDay = SettingsStore(context).firstDayOfWeek
     private var timeFormat = SettingsStore(context).timeFormat
+    private var weekdayLabels = displayWeekdayLabels(firstDay)
+    private var timeLabels = emptyList<String>()
+
+    init {
+        rebuildLabels()
+    }
 
     fun setDisplaySettings() {
         firstDay = SettingsStore(context).firstDayOfWeek
         timeFormat = SettingsStore(context).timeFormat
+        rebuildLabels()
         invalidate()
+    }
+
+    private fun rebuildLabels() {
+        weekdayLabels = displayWeekdayLabels(firstDay)
+        timeLabels = (firstHour..lastHour).map {
+            formatDisplayTime(LocalTime.of(it, 0), timeFormat)
+        }
     }
 
     fun setSessions(value: List<ClassSessionWithSubject>) {
@@ -79,7 +98,8 @@ class WeekGridView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        blocks.clear()
+        blockRects.clear()
+        blockSessions.clear()
         textPaint.textSize = dp(12f)
         val timeWidth = max(
             minimumTimeWidth,
@@ -90,7 +110,7 @@ class WeekGridView @JvmOverloads constructor(
         val columnWidth = (width - timeWidth - padding * 2) / days.size
         val left = padding + timeWidth
         val top = padding + headerHeight
-        displayWeekdayLabels(firstDay).forEachIndexed { index, day ->
+        weekdayLabels.forEachIndexed { index, day ->
             val x = left + index * columnWidth
             textPaint.textAlign = Paint.Align.CENTER
             canvas.drawText(day, x + columnWidth / 2f, padding + headerHeight * .7f, textPaint)
@@ -102,7 +122,7 @@ class WeekGridView @JvmOverloads constructor(
         for (hour in firstHour..lastHour) {
             val y = top + (hour - firstHour) * hourHeight
             canvas.drawText(
-                formatDisplayTime(LocalTime.of(hour, 0), timeFormat),
+                timeLabels[hour - firstHour],
                 timeWidth,
                 y + dp(4f),
                 textPaint
@@ -117,7 +137,8 @@ class WeekGridView @JvmOverloads constructor(
             val y = top + ((start.hour + start.minute / 60f) - firstHour) * hourHeight
             val bottom = top + ((end.hour + end.minute / 60f) - firstHour) * hourHeight
             if (bottom <= top || y >= height) return@forEach
-            val rect = RectF(
+            val rect = rectPool.getOrNull(blockRects.size) ?: RectF().also { rectPool += it }
+            rect.set(
                 left + dayIndex * columnWidth + dp(2f),
                 max(top, y) + dp(2f),
                 left + (dayIndex + 1) * columnWidth - dp(2f),
@@ -137,10 +158,10 @@ class WeekGridView @JvmOverloads constructor(
                 rect.top + dp(16f)
             )
             canvas.restore()
-            blocks += rect to session
+            blockRects += rect
+            blockSessions += session
         }
         val weekStart = startOfDisplayedWeek(LocalDate.now(), firstDay)
-        val holidayPaint = Paint().apply { color = context.getColor(R.color.holiday_overlay) }
         (0..6).forEach { dayIndex ->
             if (weekStart.plusDays(dayIndex.toLong()) in holidayDates) {
                 val x = left + dayIndex * columnWidth
@@ -155,8 +176,13 @@ class WeekGridView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.action == MotionEvent.ACTION_UP) {
-            blocks.firstOrNull { it.first.contains(event.x, event.y) }?.second?.let {
-                onClassClick?.invoke(it)
+            var index = blockRects.lastIndex
+            while (index >= 0) {
+                if (blockRects[index].contains(event.x, event.y)) {
+                    onClassClick?.invoke(blockSessions[index])
+                    break
+                }
+                index--
             }
         }
         return true
