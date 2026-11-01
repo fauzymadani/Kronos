@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-labelledby="title">
+  <title>Kronos logo</title>
+  <rect width="108" height="108" rx="24" fill="#4F378B"/>
+  <rect x="46" y="46" width="16" height="16" fill="#FFB300"/>
+  <path d="M34 30h40a4 4 0 0 1 4 4v40a4 4 0 0 1-4 4H34a4 4 0 0 1-4-4V34a4 4 0 0 1 4-4ZM46 30v48M62 30v48M30 46h48M30 62h48"
+        fill="none" stroke="#FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
