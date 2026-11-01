@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widgetRow5" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="6dp"
+android:gravity="center_vertical" android:minHeight="@dimen/widget_row_height" android:paddingTop="2dp" android:paddingBottom="2dp">
+    <LinearLayout android:layout_width="@dimen/widget_time_width" android:layout_height="wrap_content" android:layout_marginStart="10dp" android:orientation="vertical">
+        <TextView android:id="@+id/widgetTime5" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:fontFamily="sans-serif-medium" android:textSize="13sp" />
+        <TextView android:id="@+id/widgetEndTime5" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:textSize="11sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="@dimen/widget_subject_gap" android:orientation="vertical">
+        <TextView android:id="@+id/widgetSubject5" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:fontFamily="sans-serif-medium" android:textSize="14sp" />
+        <TextView android:id="@+id/widgetRoom5" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:textSize="12sp" />
+    </LinearLayout>
+    <TextView android:id="@+id/widgetMarker5" android:layout_width="24dp" android:layout_height="match_parent" android:gravity="center" android:textSize="16sp" />
+</LinearLayout>

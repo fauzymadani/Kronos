@@ -16,4 +16,12 @@
     <color name="priority_high">#FFB00020</color>
     <color name="priority_medium">#FFFF9800</color>
     <color name="priority_low">#FF4CAF50</color>
+    <color name="widget_light_background">#FFFFFBFE</color>
+    <color name="widget_dark_background">#FF211F26</color>
+    <color name="widget_light_secondary">#FF79747E</color>
+    <color name="widget_dark_secondary">#FFCAC4D0</color>
+    <color name="widget_light_highlight">#FFF3EDF7</color>
+    <color name="widget_dark_highlight">#FF49454F</color>
+    <color name="widget_light_primary">#FF1D1B20</color>
+    <color name="widget_dark_primary">#FFE6E1E9</color>
 </resources>

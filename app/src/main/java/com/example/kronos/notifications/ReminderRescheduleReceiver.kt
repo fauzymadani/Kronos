@@ -6,6 +6,7 @@ import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.example.kronos.widget.TimetableWidgetProvider
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -13,6 +14,7 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 TaskExamReminderScheduler(context.applicationContext).rescheduleAll()
+                TimetableWidgetProvider.requestUpdate(context.applicationContext)
             } finally {
                 pendingResult.finish()
             }

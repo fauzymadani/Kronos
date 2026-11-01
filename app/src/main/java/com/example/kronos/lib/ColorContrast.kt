@@ -14,5 +14,7 @@ fun contrastingTextColor(background: Int): Int {
     val luminance = listOf(red, green, blue).map {
         if (it <= 0.03928) it / 12.92 else ((it + 0.055) / 1.055).pow(2.4)
         }.let { 0.2126 * it[0] + 0.7152 * it[1] + 0.0722 * it[2] }
-        return if (luminance > 0.179) Color.BLACK else Color.WHITE
+        val blackContrast = (luminance + 0.05) / 0.05
+        val whiteContrast = 1.05 / (luminance + 0.05)
+        return if (whiteContrast >= blackContrast) Color.WHITE else Color.BLACK
     }

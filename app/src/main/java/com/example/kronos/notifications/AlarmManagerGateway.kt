@@ -64,4 +64,31 @@ class AlarmManagerGateway(context: Context) : AlarmGateway {
             )
         )
     }
+
+    override fun scheduleWidget(requestCode: Int, triggerAtMillis: Long) {
+        val intent = Intent(appContext, com.example.kronos.widget.TimetableWidgetProvider::class.java)
+            .setAction(com.example.kronos.widget.TimetableWidgetProvider.ACTION_ALARM)
+        alarmManager.set(
+            AlarmManager.RTC_WAKEUP,
+            triggerAtMillis,
+            PendingIntent.getBroadcast(
+                appContext,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        )
+    }
+
+    override fun cancelWidget(requestCode: Int) {
+        alarmManager.cancel(
+            PendingIntent.getBroadcast(
+                appContext,
+                requestCode,
+                Intent(appContext, com.example.kronos.widget.TimetableWidgetProvider::class.java)
+                    .setAction(com.example.kronos.widget.TimetableWidgetProvider.ACTION_ALARM),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        )
+    }
 }

@@ -105,4 +105,5 @@
     <string name="open_channel_settings">Open system notification settings</string>
     <string name="reminder_date">Reminder date</string>
     <string name="reminder_time">Reminder time</string>
+    <string name="widget_no_classes">No classes today</string>
 </resources>

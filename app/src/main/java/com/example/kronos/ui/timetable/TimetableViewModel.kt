@@ -1,5 +1,6 @@
 package com.example.kronos.ui.timetable
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -15,11 +16,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.example.kronos.widget.TimetableWidgetProvider
 
 class TimetableViewModel(
     private val repository: TimetableRepository,
-    private val settings: com.example.kronos.data.SettingsStore
+    private val settings: com.example.kronos.data.SettingsStore,
+    context: Context
 ) : ViewModel() {
+    private val appContext = context.applicationContext
     private val selectedDay = MutableStateFlow(java.time.LocalDate.now().dayOfWeek.value)
     val day: StateFlow<Int> = selectedDay.asStateFlow()
     val sessions: StateFlow<List<ClassSessionWithSubject>> =
@@ -68,24 +72,31 @@ class TimetableViewModel(
         repository.save(
             existing, subject, color, dayOfWeek, start, end, room, teacher, notes,
             weekNumber, reminderEnabled, reminderOffsetMinutes
-        )
+        ).also { TimetableWidgetProvider.requestUpdate(appContext) }
     }
 
     fun delete(session: ClassSession) = viewModelScope.launch {
-        repository.delete(session)
+        repository.delete(session).also { TimetableWidgetProvider.requestUpdate(appContext) }
     }
 
     suspend fun findSession(id: Long): ClassSession? = repository.findSession(id)
-    fun saveHoliday(holiday: Holiday) = viewModelScope.launch { repository.saveHoliday(holiday) }
-    fun deleteHoliday(holiday: Holiday) = viewModelScope.launch { repository.deleteHoliday(holiday) }
+    fun saveHoliday(holiday: Holiday) = viewModelScope.launch {
+        repository.saveHoliday(holiday)
+        TimetableWidgetProvider.requestUpdate(appContext)
+    }
+    fun deleteHoliday(holiday: Holiday) = viewModelScope.launch {
+        repository.deleteHoliday(holiday)
+        TimetableWidgetProvider.requestUpdate(appContext)
+    }
     suspend fun findHoliday(id: Long): Holiday? = repository.findHoliday(id)
 
     class Factory(
         private val repository: TimetableRepository,
-        private val settings: com.example.kronos.data.SettingsStore
+        private val settings: com.example.kronos.data.SettingsStore,
+        private val context: Context
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            TimetableViewModel(repository, settings) as T
+            TimetableViewModel(repository, settings, context) as T
     }
 }

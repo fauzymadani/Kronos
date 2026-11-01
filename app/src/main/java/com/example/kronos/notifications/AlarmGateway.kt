@@ -11,4 +11,8 @@ interface AlarmGateway {
     )
 
     fun cancel(requestCode: Int)
+
+    fun scheduleWidget(requestCode: Int, triggerAtMillis: Long) = Unit
+
+    fun cancelWidget(requestCode: Int) = Unit
 }

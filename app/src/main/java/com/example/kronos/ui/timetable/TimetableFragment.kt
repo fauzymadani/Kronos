@@ -46,7 +46,8 @@ class TimetableFragment : Fragment() {
         val database = DatabaseProvider.get(requireContext())
         TimetableViewModel.Factory(
             TimetableRepository(database.classSessionDao(), database.subjectDao(), database.holidayDao()),
-            SettingsStore(requireContext())
+            SettingsStore(requireContext()),
+            requireContext()
         )
     }
     private val adapter = ClassSessionAdapter(::editClass)
@@ -378,6 +379,7 @@ class TimetableFragment : Fragment() {
             .setTitle(R.string.rotation_length)
             .setSingleChoiceItems(choices, settings.rotationLength - 1) { dialog, which ->
                 settings.rotationLength = which + 1
+                com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
                 viewLifecycleOwner.lifecycleScope.launch { reminderScheduler.rescheduleAll() }
                 dialog.dismiss()
             }
@@ -385,6 +387,7 @@ class TimetableFragment : Fragment() {
                 val date = settings.semesterStart
                 android.app.DatePickerDialog(requireContext(), { _, year, month, day ->
                     settings.semesterStart = java.time.LocalDate.of(year, month + 1, day)
+                    com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
                     viewLifecycleOwner.lifecycleScope.launch { reminderScheduler.rescheduleAll() }
                 }, date.year, date.monthValue - 1, date.dayOfMonth).show()
             }
@@ -421,6 +424,7 @@ class TimetableFragment : Fragment() {
             .setTitle(R.string.theme_settings)
             .setSingleChoiceItems(modes, selected) { dialogInterface, which ->
                 settings.themeMode = ThemeMode.values()[which]
+                com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
                 dialogInterface.dismiss()
                 recreateForTheme()
             }
@@ -429,6 +433,7 @@ class TimetableFragment : Fragment() {
             .create()
         amoled.setOnCheckedChangeListener { _, checked ->
             settings.pureBlack = checked
+            com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
             if (settings.themeMode == ThemeMode.DARK ||
                 (settings.themeMode == ThemeMode.AUTO_BATTERY &&
                     (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==

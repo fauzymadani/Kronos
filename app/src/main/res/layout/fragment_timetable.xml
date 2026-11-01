@@ -39,12 +39,13 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:fillViewport="true">
+            android:fillViewport="false"
+            android:overScrollMode="ifContentScrolls">
 
             <com.example.kronos.ui.timetable.DayTimelineView
                 android:id="@+id/dayTimeline"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:layout_height="wrap_content" />
         </android.widget.ScrollView>
 
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton

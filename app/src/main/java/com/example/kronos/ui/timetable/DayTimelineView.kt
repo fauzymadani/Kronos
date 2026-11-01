@@ -48,6 +48,10 @@ class DayTimelineView @JvmOverloads constructor(
         textSize = dp(12f)
         typeface = android.graphics.Typeface.DEFAULT
     }
+    private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = dp(12f)
+        typeface = android.graphics.Typeface.DEFAULT
+    }
     private val boldTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = dp(12f)
         typeface = android.graphics.Typeface.DEFAULT_BOLD
@@ -63,16 +67,11 @@ class DayTimelineView @JvmOverloads constructor(
     private val primaryColor = resolveColor(com.google.android.material.R.attr.colorPrimary)
 
     init {
-        setBackgroundColor(resolveColor(com.google.android.material.R.attr.colorSurface))
-        linePaint.color = resolveColor(com.google.android.material.R.attr.colorOutline)
-        linePaint.strokeWidth = dp(1f)
-        halfLinePaint.color = resolveColor(com.google.android.material.R.attr.colorOutlineVariant)
-        halfLinePaint.strokeWidth = dp(1f)
-        textPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
-        boldTextPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurface)
+        refreshThemeColors()
     }
 
     fun setDay(value: LocalDate, sessions: List<ClassSessionWithSubject>) {
+        refreshThemeColors()
         day = value
         layout = calculateDayTimelineLayout(sessions)
         currentLineMinute = if (day == LocalDate.now()) {
@@ -82,6 +81,19 @@ class DayTimelineView @JvmOverloads constructor(
         rebuildRenderData()
         requestLayout()
         invalidate()
+    }
+
+    private fun refreshThemeColors() {
+        setBackgroundColor(resolveColor(com.google.android.material.R.attr.colorSurface))
+        linePaint.color = resolveColor(com.google.android.material.R.attr.colorOutline)
+        linePaint.strokeWidth = dp(1f)
+        halfLinePaint.color = resolveColor(com.google.android.material.R.attr.colorOutlineVariant)
+        halfLinePaint.strokeWidth = dp(1f)
+        textPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
+        labelPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
+        boldTextPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurface)
+        currentPaint.color = resolveColor(com.google.android.material.R.attr.colorPrimary)
+        currentDotPaint.color = currentPaint.color
     }
 
     fun minuteForScroll(): Int =
@@ -96,9 +108,13 @@ class DayTimelineView @JvmOverloads constructor(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val desiredHeight = (layout.durationMinutes * minuteHeight).toInt() + dp(8f).toInt()
+        val height = when (MeasureSpec.getMode(heightMeasureSpec)) {
+            MeasureSpec.UNSPECIFIED -> desiredHeight
+            else -> max(desiredHeight, MeasureSpec.getSize(heightMeasureSpec))
+        }
         setMeasuredDimension(
             MeasureSpec.getSize(widthMeasureSpec),
-            resolveSize(desiredHeight, heightMeasureSpec)
+            height
         )
     }
 
@@ -156,7 +172,17 @@ class DayTimelineView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_UP) {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                parent?.requestDisallowInterceptTouchEvent(true)
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                parent?.requestDisallowInterceptTouchEvent(false)
             var index = rects.size - 1
             while (index >= 0) {
                 if (rects[index].contains(event.x, event.y)) {
@@ -165,6 +191,8 @@ class DayTimelineView @JvmOverloads constructor(
                 }
                 index--
             }
+            }
+            MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
         }
         return true
     }
@@ -203,8 +231,8 @@ class DayTimelineView @JvmOverloads constructor(
     }
 
     private fun drawTimeLabel(canvas: Canvas, label: String, y: Float) {
-        textPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText(label, timeWidth, y + dp(4f), textPaint)
+        labelPaint.textAlign = Paint.Align.RIGHT
+        canvas.drawText(label, timeWidth, y + dp(4f), labelPaint)
     }
 
     private fun drawFittedText(
