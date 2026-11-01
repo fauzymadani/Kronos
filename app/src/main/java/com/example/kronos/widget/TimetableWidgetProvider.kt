@@ -43,9 +43,13 @@ class TimetableWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        if (intent.action == ACTION_REFRESH || intent.action == ACTION_ALARM) {
+        if (intent.action == actionRefresh(context) || intent.action == actionAlarm(context)) {
             val ids = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)
-            updateAsync(context.applicationContext, ids, if (intent.action == ACTION_REFRESH) 200 else 0)
+            updateAsync(
+                context.applicationContext,
+                ids,
+                if (intent.action == actionRefresh(context)) 200 else 0
+            )
         }
     }
 
@@ -241,9 +245,15 @@ class TimetableWidgetProvider : AppWidgetProvider() {
         Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
 
     companion object {
-        const val ACTION_REFRESH = "com.example.kronos.action.WIDGET_REFRESH"
-        const val ACTION_ALARM = "com.example.kronos.action.WIDGET_ALARM"
+        private const val ACTION_REFRESH_SUFFIX = ".action.WIDGET_REFRESH"
+        private const val ACTION_ALARM_SUFFIX = ".action.WIDGET_ALARM"
         const val WIDGET_ALARM_REQUEST_CODE = Int.MIN_VALUE + 8101
+
+        fun actionRefresh(context: Context): String =
+            context.packageName + ACTION_REFRESH_SUFFIX
+
+        fun actionAlarm(context: Context): String =
+            context.packageName + ACTION_ALARM_SUFFIX
 
         fun requestUpdate(context: Context) {
             val component = ComponentName(context, TimetableWidgetProvider::class.java)
@@ -251,7 +261,7 @@ class TimetableWidgetProvider : AppWidgetProvider() {
             if (ids.isEmpty()) return
             context.sendBroadcast(
                 Intent(context, TimetableWidgetProvider::class.java)
-                    .setAction(ACTION_REFRESH)
+                    .setAction(actionRefresh(context))
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
             )
         }

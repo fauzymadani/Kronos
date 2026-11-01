@@ -14,7 +14,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.kronos"
+        applicationId = "io.github.fauzymadani.kronos"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
