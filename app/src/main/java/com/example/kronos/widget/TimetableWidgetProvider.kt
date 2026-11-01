@@ -127,7 +127,14 @@ class TimetableWidgetProvider : AppWidgetProvider() {
             R.drawable.widget_background_light
         }
         views.setInt(R.id.widgetRoot, "setBackgroundResource", backgroundResource)
-        views.setTextColor(R.id.widgetHeader, foreground)
+        views.setTextColor(
+            R.id.widgetHeader,
+            if (dark || settings.pureBlack) {
+                context.getColor(R.color.widget_dark_accent)
+            } else {
+                context.getColor(R.color.widget_light_accent)
+            }
+        )
         views.setTextColor(R.id.widgetWeek, secondary)
         views.setTextColor(R.id.widgetEmpty, secondary)
         views.setTextColor(R.id.widgetHoliday, secondary)

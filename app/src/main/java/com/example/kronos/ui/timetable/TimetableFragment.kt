@@ -789,7 +789,11 @@ class TimetableFragment : Fragment() {
 
     override fun onDestroyView() {
         binding.classList.adapter = null
+        binding.monthGrid.adapter = null
         binding.monthClasses.adapter = null
+        binding.monthExams.adapter = null
+        binding.weekGrid.onClassClick = null
+        binding.dayTimeline.onClassClick = null
         _binding = null
         super.onDestroyView()
     }

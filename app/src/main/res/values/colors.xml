@@ -24,4 +24,6 @@
     <color name="widget_dark_highlight">#FF49454F</color>
     <color name="widget_light_primary">#FF1D1B20</color>
     <color name="widget_dark_primary">#FFE6E1E9</color>
+    <color name="widget_light_accent">#FFC62828</color>
+    <color name="widget_dark_accent">#FFFF8A80</color>
 </resources>
