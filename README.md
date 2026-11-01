@@ -12,6 +12,11 @@ Kronos is a private, offline-first Android app for keeping a class schedule, ass
 
 There is no account, backend, or required internet connection. Your schedule and tasks stay on your device.
 
+> **Disclaimer.** Kronos is a personal, non-commercial project provided
+> "as is", without warranty of any kind. You use it at your own risk, and you
+> are responsible for your own data and backups. See
+> [DISCLAIMER.md](DISCLAIMER.md) for details.
+
 ## What you can do
 
 - Add subjects with colors for quick identification.
