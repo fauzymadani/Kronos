@@ -27,6 +27,7 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
     private var examId = 0L
     private var date = LocalDate.now()
     private var time: LocalTime? = null
+    private var endTime: LocalTime? = null
     private var subjects: List<Subject> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,6 +36,7 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
         examId = args.getLong(ARG_ID)
         date = args.getString(ARG_DATE)?.let(LocalDate::parse) ?: date
         time = args.getString(ARG_TIME)?.let(LocalTime::parse)
+        endTime = args.getString(ARG_END_TIME)?.let(LocalTime::parse)
         val ids = args.getLongArray(ARG_SUBJECT_IDS) ?: LongArray(0)
         val names = args.getStringArrayList(ARG_SUBJECT_NAMES) ?: arrayListOf()
         subjects = ids.mapIndexed { index, id -> Subject(id = id, name = names[index]) }
@@ -71,6 +73,17 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
                 render()
             }, value.hour, value.minute, SettingsStore(requireContext()).timeFormat == TimeFormat.HOUR_24).show()
         }
+        binding.endTime.setOnClickListener {
+            val value = endTime ?: time?.plusHours(1) ?: LocalTime.of(10, 0)
+            TimePickerDialog(requireContext(), { _, hour, minute ->
+                endTime = LocalTime.of(hour, minute)
+                render()
+            }, value.hour, value.minute, SettingsStore(requireContext()).timeFormat == TimeFormat.HOUR_24).show()
+        }
+        binding.clearEndTime.setOnClickListener {
+            endTime = null
+            render()
+        }
         binding.save.setOnClickListener { save() }
         binding.delete.visibility = if (examId == 0L) View.GONE else View.VISIBLE
         binding.delete.setOnClickListener {
@@ -92,6 +105,9 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
         binding.date.text = formatDisplayDate(date)
         binding.time.text = time?.let { formatDisplayTime(it, settings.timeFormat) }
             ?: getString(R.string.exam_time)
+        binding.endTime.text = endTime?.let { formatDisplayTime(it, settings.timeFormat) }
+            ?: getString(R.string.exam_end_time)
+        binding.clearEndTime.visibility = if (endTime == null) View.GONE else View.VISIBLE
     }
 
     private fun save() {
@@ -101,6 +117,7 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
             putLong(RESULT_SUBJECT_ID, selected?.id ?: 0L)
             putString(RESULT_DATE, date.toString())
             putString(RESULT_TIME, time?.toString())
+            putString(RESULT_END_TIME, endTime?.toString())
             putString(RESULT_ROOM, binding.room.text?.toString())
             putString(RESULT_SEAT, binding.seat.text?.toString())
             putString(RESULT_NOTES, binding.notes.text?.toString())
@@ -120,6 +137,7 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
         const val RESULT_SUBJECT_ID = "subject_id"
         const val RESULT_DATE = "date"
         const val RESULT_TIME = "time"
+        const val RESULT_END_TIME = "end_time"
         const val RESULT_ROOM = "room"
         const val RESULT_SEAT = "seat"
         const val RESULT_NOTES = "notes"
@@ -127,6 +145,7 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
         private const val ARG_SUBJECT_ID = "subject_id"
         private const val ARG_DATE = "date"
         private const val ARG_TIME = "time"
+        private const val ARG_END_TIME = "end_time"
         private const val ARG_ROOM = "room"
         private const val ARG_SEAT = "seat"
         private const val ARG_NOTES = "notes"
@@ -139,6 +158,7 @@ class ExamEditorBottomSheet : BottomSheetDialogFragment() {
                 putLong(ARG_SUBJECT_ID, exam?.subjectId ?: 0L)
                 putString(ARG_DATE, exam?.date?.toString())
                 putString(ARG_TIME, exam?.startTime?.toString())
+                putString(ARG_END_TIME, exam?.endTime?.toString())
                 putString(ARG_ROOM, exam?.room)
                 putString(ARG_SEAT, exam?.seat)
                 putString(ARG_NOTES, exam?.notes)

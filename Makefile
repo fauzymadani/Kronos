@@ -41,11 +41,10 @@ devices:
 install: build
 	$(ADB) install -r $(APK_DEBUG)
 
-# Release APK uses a different signing key than debug, so uninstall first.
+# Replaces an existing release in place, so app data survives the update.
 .PHONY: install-release
 install-release: build-release
-	-$(ADB) uninstall $(APP_ID)
-	$(ADB) install $(APK_RELEASE)
+	$(ADB) install -r $(APK_RELEASE)
 
 .PHONY: uninstall
 uninstall:

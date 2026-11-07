@@ -110,6 +110,7 @@ data class Exam(
     val subjectId: Long? = null,
     val date: LocalDate,
     val startTime: LocalTime? = null,
+    val endTime: LocalTime? = null,
     val room: String? = null,
     val seat: String? = null,
     val notes: String? = null

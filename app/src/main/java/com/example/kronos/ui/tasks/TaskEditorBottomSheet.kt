@@ -244,16 +244,8 @@ class TaskEditorBottomSheet : BottomSheetDialogFragment() {
         binding.category.setSelection(value.indexOfFirst { it.id == selectedCategoryId } + 1)
     }
 
-    override fun onDestroy() {
-        if (isAdded) {
-            parentFragmentManager.setFragmentResult(CLOSED, Bundle.EMPTY)
-        }
-        super.onDestroy()
-    }
-
     companion object {
         const val REQUEST = "task_editor"
-        const val CLOSED = "task_editor_closed"
         const val RESULT_ID = "id"; const val RESULT_DELETE = "delete"
         const val RESULT_TITLE = "title"; const val RESULT_NOTES = "notes"
         const val RESULT_DATE = "date"; const val RESULT_TIME = "time"

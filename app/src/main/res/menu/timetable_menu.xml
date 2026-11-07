@@ -17,6 +17,11 @@
         android:checkable="true"
         android:showAsAction="never" />
     <item
+        android:id="@+id/show_exams"
+        android:title="@string/show_exams"
+        android:checkable="true"
+        android:showAsAction="never" />
+    <item
         android:id="@+id/settings"
         android:title="@string/settings"
         android:showAsAction="never" />

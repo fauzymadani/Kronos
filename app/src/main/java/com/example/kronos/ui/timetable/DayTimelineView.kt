@@ -10,8 +10,10 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.ScrollView
+import androidx.core.graphics.ColorUtils
 import com.example.kronos.R
 import com.example.kronos.data.local.ClassSessionWithSubject
+import com.example.kronos.data.local.ExamWithSubject
 import com.example.kronos.data.SettingsStore
 import com.example.kronos.lib.calculateDayTimelineLayout
 import com.example.kronos.lib.contrastingTextColor
@@ -23,6 +25,11 @@ import java.time.LocalTime
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+
+// Fallback block length for an exam that has no end time.
+private const val EXAM_HOUR_MINUTES = 60
 
 class DayTimelineView @JvmOverloads constructor(
     context: Context,
@@ -36,6 +43,11 @@ class DayTimelineView @JvmOverloads constructor(
     private var scrolledDay: LocalDate? = null
     private val rects = ArrayList<RectF>(24)
     private val blocks = ArrayList<ClassSessionWithSubject>(24)
+    private var dayExams: List<ExamWithSubject> = emptyList()
+    private val examRects = ArrayList<RectF>(8)
+    private val examTitles = ArrayList<String>(8)
+    private val examDetails = ArrayList<String>(8)
+    private val examColors = ArrayList<Int>(8)
     private val blockText = ArrayList<String>(24)
     private val roomText = ArrayList<String>(24)
     private val blockColors = ArrayList<Int>(24)
@@ -85,6 +97,12 @@ class DayTimelineView @JvmOverloads constructor(
         color = strongTextColor
     }
     private val blockPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val examFillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val examStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = dp(1f)
+    }
+    private val examTintAlpha = 0x1F
     private val currentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = accentColor
         strokeWidth = dp(2f)
@@ -94,9 +112,14 @@ class DayTimelineView @JvmOverloads constructor(
     }
     private val primaryColor = accentColor
 
-    fun setDay(value: LocalDate, sessions: List<ClassSessionWithSubject>) {
+    fun setDay(
+        value: LocalDate,
+        sessions: List<ClassSessionWithSubject>,
+        exams: List<ExamWithSubject> = emptyList()
+    ) {
         timeFormat = SettingsStore(context).timeFormat
         day = value
+        dayExams = exams
         layout = calculateDayTimelineLayout(sessions)
         val now = LocalTime.now()
         val nowMinutes = now.hour * 60 + now.minute
@@ -105,7 +128,9 @@ class DayTimelineView @JvmOverloads constructor(
         if (value != scrolledDay) {
             scrolledDay = value
             pendingScrollMinute = initialScrollMinutes(
-                sessions.map { LocalTime.parse(it.startTime).toSecondOfDay() / 60 },
+                sessions.map { LocalTime.parse(it.startTime).toSecondOfDay() / 60 } +
+                    exams.mapNotNull { it.startTime }
+                        .map { LocalTime.parse(it).toSecondOfDay() / 60 },
                 isToday,
                 nowMinutes
             )
@@ -137,6 +162,50 @@ class DayTimelineView @JvmOverloads constructor(
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         rebuildRenderData()
         applyPendingScroll()
+    }
+
+    // Keeps the "now" line and exam countdown honest while the timeline stays on screen.
+    private val minuteTicker = object : Runnable {
+        override fun run() {
+            refreshCurrentMinute()
+            postDelayed(this, 60_000L - System.currentTimeMillis() % 60_000L)
+        }
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        postDelayed(minuteTicker, 60_000L - System.currentTimeMillis() % 60_000L)
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(minuteTicker)
+        super.onDetachedFromWindow()
+    }
+
+    private fun refreshCurrentMinute() {
+        val now = LocalTime.now()
+        val nowMinutes = now.hour * 60 + now.minute
+        val line = if (day == LocalDate.now()) nowMinutes else -1
+        if (line == currentLineMinute) return
+        currentLineMinute = line
+        rebuildRenderData()
+        invalidate()
+    }
+
+    /** Heads-up such as "Starts in 1 hour"; null when the day is not today or the exam is over. */
+    private fun examCountdownLabel(startMinute: Int, endMinute: Int): String? {
+        if (day != LocalDate.now()) return null
+        val now = LocalTime.now()
+        val nowMinutes = now.hour * 60 + now.minute
+        if (nowMinutes >= endMinute) return null
+        if (nowMinutes >= startMinute) return context.getString(R.string.status_in_progress)
+        val minutes = startMinute - nowMinutes
+        return when {
+            minutes <= 1 -> context.getString(R.string.exam_starts_soon)
+            minutes < 60 -> context.getString(R.string.exam_starts_minutes, minutes)
+            minutes <= 90 -> context.getString(R.string.exam_starts_hour)
+            else -> context.getString(R.string.exam_starts_hours, (minutes / 60f).roundToInt())
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -182,6 +251,31 @@ class DayTimelineView @JvmOverloads constructor(
                 canvas.restore()
             }
             index++
+        }
+
+        var examIndex = 0
+        while (examIndex < examRects.size) {
+            val rect = examRects[examIndex]
+            if (rect.bottom >= clipBounds.top && rect.top <= clipBounds.bottom) {
+                val color = examColors[examIndex]
+                examFillPaint.color = ColorUtils.setAlphaComponent(color, examTintAlpha)
+                examStrokePaint.color = color
+                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, examFillPaint)
+                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, examStrokePaint)
+                canvas.save()
+                canvas.clipRect(rect)
+                boldTextPaint.color = strongTextColor
+                textPaint.color = textColor
+                textPaint.textAlign = Paint.Align.LEFT
+                val textLeft = rect.left + dp(6f)
+                val baseline = rect.top + dp(16f)
+                canvas.drawText(examTitles[examIndex], textLeft, baseline, boldTextPaint)
+                if (rect.height() >= dp(40f) && examDetails[examIndex].isNotEmpty()) {
+                    canvas.drawText(examDetails[examIndex], textLeft, baseline + dp(16f), textPaint)
+                }
+                canvas.restore()
+            }
+            examIndex++
         }
 
         if (currentLineMinute >= 0) {
@@ -238,20 +332,97 @@ class DayTimelineView @JvmOverloads constructor(
             val bottom = max(top + dp(28f), yForMinute(block.endMinute) - blockGap)
             rects += RectF(left, top, right, bottom)
             blocks += block.session
-            blockText += fitText(
-                block.session.subjectName,
-                right - left - dp(12f),
-                boldTextPaint
-            )
-            roomText += fitText(
-                block.session.room.orEmpty(),
-                right - left - dp(12f),
-                textPaint
-            )
+            blockText += ""
+            roomText += ""
+            updateBlockText(index)
             val color = parseUserColor(block.session.subjectColor, primaryColor)
             blockColors += color
             textColors += contrastingTextColor(color)
             index++
+        }
+        examRects.clear()
+        examTitles.clear()
+        examDetails.clear()
+        examColors.clear()
+        // An exam that shares a slot with a class gets its own column on the right.
+        val examStarts = IntArray(dayExams.size)
+        val examEnds = IntArray(dayExams.size)
+        val examColumns = IntArray(dayExams.size)
+        val examColumnEnds = ArrayList<Int>(4)
+        var examIndex = 0
+        while (examIndex < dayExams.size) {
+            val exam = dayExams[examIndex]
+            val start = exam.startTime?.let(LocalTime::parse)
+                ?.let { it.hour * 60 + it.minute } ?: 0
+            examStarts[examIndex] = start
+            examEnds[examIndex] = exam.endTime?.let(LocalTime::parse)
+                ?.let { it.hour * 60 + it.minute }
+                ?.takeIf { it > start } ?: (start + EXAM_HOUR_MINUTES)
+            var column = 0
+            while (column < examColumnEnds.size && examColumnEnds[column] > start) column++
+            if (column == examColumnEnds.size) examColumnEnds += examEnds[examIndex]
+            else examColumnEnds[column] = examEnds[examIndex]
+            examColumns[examIndex] = column
+            examIndex++
+        }
+        val examSlotCount = max(1, examColumnEnds.size)
+        val contentLeft = timeWidth + horizontalPadding
+        examIndex = 0
+        while (examIndex < dayExams.size) {
+            val exam = dayExams[examIndex]
+            var collisionLeft = Float.MAX_VALUE
+            var collisionRight = -1f
+            var blockIndex = 0
+            while (blockIndex < rects.size) {
+                val block = layout.blocks[blockIndex]
+                if (block.startMinute < examEnds[examIndex] && block.endMinute > examStarts[examIndex]) {
+                    collisionLeft = min(collisionLeft, rects[blockIndex].left)
+                    collisionRight = max(collisionRight, rects[blockIndex].right)
+                }
+                blockIndex++
+            }
+            val left: Float
+            val right: Float
+            if (collisionRight < 0f) {
+                left = contentLeft + blockGap
+                right = contentLeft + contentWidth - blockGap
+            } else {
+                val slot = (collisionRight - collisionLeft) / (examSlotCount + 1)
+                right = collisionRight - slot * (examSlotCount - 1 - examColumns[examIndex])
+                left = max(contentLeft + blockGap, right - max(slot, dp(64f)))
+                blockIndex = 0
+                while (blockIndex < rects.size) {
+                    val block = layout.blocks[blockIndex]
+                    if (block.startMinute < examEnds[examIndex] &&
+                        block.endMinute > examStarts[examIndex] &&
+                        rects[blockIndex].right > left
+                    ) {
+                        val rect = rects[blockIndex]
+                        rect.right = max(rect.left + dp(16f), left - blockGap)
+                        updateBlockText(blockIndex)
+                    }
+                    blockIndex++
+                }
+            }
+            val top = yForMinute(examStarts[examIndex]) + blockGap
+            val bottom = max(top + dp(28f), yForMinute(examEnds[examIndex]) - blockGap)
+            examRects += RectF(left, top, right, bottom)
+            examTitles += fitText(
+                context.getString(R.string.exam_block_title, exam.subjectName ?: exam.title),
+                right - left - dp(12f),
+                boldTextPaint
+            )
+            val countdown = examCountdownLabel(examStarts[examIndex], examEnds[examIndex])
+            val timeRange = exam.startTime?.let { startTime ->
+                exam.endTime?.let { "$startTime-$it" } ?: startTime
+            }
+            examDetails += fitText(
+                listOfNotNull(countdown, timeRange, exam.room).joinToString(" \u00b7 "),
+                right - left - dp(12f),
+                textPaint
+            )
+            examColors += parseUserColor(exam.subjectColor, primaryColor)
+            examIndex++
         }
         val hours = layout.lastMinute / 60
         var hour = 0
@@ -264,6 +435,13 @@ class DayTimelineView @JvmOverloads constructor(
     private fun drawTimeLabel(canvas: Canvas, label: String, y: Float) {
         labelPaint.textAlign = Paint.Align.RIGHT
         canvas.drawText(label, timeWidth, y + dp(4f), labelPaint)
+    }
+
+    private fun updateBlockText(index: Int) {
+        val rect = rects[index]
+        val maxWidth = rect.right - rect.left - dp(12f)
+        blockText[index] = fitText(blocks[index].subjectName, maxWidth, boldTextPaint)
+        roomText[index] = fitText(blocks[index].room.orEmpty(), maxWidth, textPaint)
     }
 
     private fun fitText(value: String, maxWidth: Float, paint: Paint): String {

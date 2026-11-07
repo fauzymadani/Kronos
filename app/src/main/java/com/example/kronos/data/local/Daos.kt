@@ -194,6 +194,7 @@ data class ExamWithSubject(
     val subjectColor: String?,
     val date: String,
     val startTime: String?,
+    val endTime: String?,
     val room: String?,
     val seat: String?,
     val notes: String?
@@ -204,7 +205,7 @@ interface ExamDao {
     @Query(
         """
         SELECT e.id, e.title, e.subjectId, s.name AS subjectName, s.color AS subjectColor,
-               e.date, e.startTime, e.room, e.seat, e.notes
+               e.date, e.startTime, e.endTime, e.room, e.seat, e.notes
         FROM exams e
         LEFT JOIN subjects s ON s.id = e.subjectId
         ORDER BY e.date ASC, e.startTime ASC

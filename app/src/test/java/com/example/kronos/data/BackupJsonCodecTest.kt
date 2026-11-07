@@ -27,7 +27,7 @@ class BackupJsonCodecTest {
         listOf(ClassSession(4, 3, 1, LocalTime.of(9, 0), LocalTime.of(10, 0), "A,1", "T", 2, "note", true, 5)),
         listOf(Category(5, "Work", "#fff")),
         listOf(Task(6, "Task", "notes", LocalDate.of(2026, 9, 2), LocalTime.NOON, 3, 5, 1, true, LocalDateTime.of(2026, 9, 1, 8, 0), TaskStatus.DONE.code, AssignmentType.GROUP.code, 1_700_000_000_000L)),
-        listOf(Exam(7, "Exam", 3, LocalDate.of(2026, 9, 3), LocalTime.of(12, 0), "Room", "1", "notes")),
+        listOf(Exam(7, "Exam", 3, LocalDate.of(2026, 9, 3), LocalTime.of(12, 0), LocalTime.of(13, 30), "Room", "1", "notes")),
         listOf(Holiday(8, "Break", LocalDate.of(2026, 9, 4), LocalDate.of(2026, 9, 5), null)),
         settings
     )
@@ -40,10 +40,10 @@ class BackupJsonCodecTest {
     @Test
     fun rejectsNewerFormatAndSchema() {
         assertThrows(BackupValidationException::class.java) {
-            BackupJsonCodec.decode(BackupJsonCodec.encode(data).replace("\"formatVersion\":2", "\"formatVersion\":3"))
+            BackupJsonCodec.decode(BackupJsonCodec.encode(data).replace("\"formatVersion\":3", "\"formatVersion\":4"))
         }
         assertThrows(BackupValidationException::class.java) {
-            BackupJsonCodec.decode(BackupJsonCodec.encode(data).replace("\"databaseSchemaVersion\":9", "\"databaseSchemaVersion\":10"))
+            BackupJsonCodec.decode(BackupJsonCodec.encode(data).replace("\"databaseSchemaVersion\":10", "\"databaseSchemaVersion\":11"))
         }
     }
 

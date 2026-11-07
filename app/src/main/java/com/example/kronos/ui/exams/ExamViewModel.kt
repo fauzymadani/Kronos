@@ -40,7 +40,8 @@ data class ExamUiState(
     val selectedDateExams: List<ExamWithSubject> = emptyList(),
     val nextExam: ExamWithSubject? = null,
     val pastCount: Int = 0,
-    val hasExams: Boolean = false
+    val hasExams: Boolean = false,
+    val filterSubjectId: Long? = null
 )
 
 class ExamViewModel(
@@ -49,6 +50,8 @@ class ExamViewModel(
     private val settings: SettingsStore
 ) : ViewModel() {
     private data class Clock(val today: LocalDate, val firstDayOfWeek: FirstDayOfWeek)
+
+    private data class ViewOptions(val mode: ExamViewMode, val subjectId: Long?)
 
     val mode = MutableStateFlow(ExamViewMode.CALENDAR)
     val month = MutableStateFlow(YearMonth.now())
@@ -62,14 +65,21 @@ class ExamViewModel(
         viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList()
     )
 
+    /** Subject filter; null shows every exam. */
+    private val filterSubjectId = MutableStateFlow<Long?>(null)
+
+    private val viewOptions = combine(mode, filterSubjectId, ::ViewOptions)
+
     val uiState: StateFlow<ExamUiState> = combine(
-        exams, mode, month, selectedDate, clock
-    ) { list, viewMode, monthValue, selected, clockValue ->
-        buildState(list, viewMode, monthValue, selected, clockValue)
+        exams, viewOptions, month, selectedDate, clock
+    ) { list, options, monthValue, selected, clockValue ->
+        buildState(list, options, monthValue, selected, clockValue)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5_000),
-        buildState(emptyList(), mode.value, month.value, selectedDate.value, clock.value)
+        buildState(
+            emptyList(), ViewOptions(mode.value, null), month.value, selectedDate.value, clock.value
+        )
     )
 
     fun onPrevMonth() {
@@ -88,6 +98,10 @@ class ExamViewModel(
         mode.value = value
     }
 
+    fun setFilter(subjectId: Long?) {
+        filterSubjectId.value = subjectId
+    }
+
     /** Keeps "today" and the first day of week right after midnight or a settings change. */
     fun refreshToday() {
         clock.value = Clock(LocalDate.now(), settings.firstDayOfWeek)
@@ -95,30 +109,33 @@ class ExamViewModel(
 
     private fun buildState(
         exams: List<ExamWithSubject>,
-        mode: ExamViewMode,
+        options: ViewOptions,
         month: YearMonth,
         selected: LocalDate,
         clock: Clock
     ): ExamUiState {
         val today = clock.today
-        val sections = groupExams(exams, today)
+        val subjectId = options.subjectId
+        val visible = if (subjectId == null) exams else exams.filter { it.subjectId == subjectId }
+        val sections = groupExams(visible, today)
         val selectedIso = selected.toString()
         return ExamUiState(
-            mode = mode,
+            mode = options.mode,
             month = month,
             selectedDate = selected,
             today = today,
             weekdayLabels = displayWeekdayLabels(clock.firstDayOfWeek),
             cells = buildMonthCells(
-                month, clock.firstDayOfWeek, today, selected, examDotsByDate(exams)
+                month, clock.firstDayOfWeek, today, selected, examDotsByDate(visible)
             ),
             sections = sections,
-            selectedDateExams = exams.filter { it.date == selectedIso }
+            selectedDateExams = visible.filter { it.date == selectedIso }
                 .sortedBy { it.startTime.orEmpty() },
-            nextExam = nextExam(exams, today),
+            nextExam = nextExam(visible, today),
             pastCount = sections.firstOrNull { it.section == ExamSection.PAST }
                 ?.exams?.size ?: 0,
-            hasExams = exams.isNotEmpty()
+            hasExams = visible.isNotEmpty(),
+            filterSubjectId = subjectId
         )
     }
 

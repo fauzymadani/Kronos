@@ -64,6 +64,10 @@ class SettingsStore(context: Context) {
         get() = FirstDayOfWeek.fromStoredValue(preferences.getString(KEY_FIRST_DAY, null))
         set(value) = preferences.edit { putString(KEY_FIRST_DAY, value.value) }
 
+    var dayViewShowsExams: Boolean
+        get() = preferences.getBoolean(KEY_DAY_VIEW_EXAMS, true)
+        set(value) = preferences.edit { putBoolean(KEY_DAY_VIEW_EXAMS, value) }
+
     var defaultReminderOffsetMinutes: Int
         get() = preferences.getInt(KEY_DEFAULT_REMINDER_OFFSET, 10)
         set(value) {
@@ -122,6 +126,7 @@ class SettingsStore(context: Context) {
         private const val KEY_PURE_BLACK = "pure_black"
         private const val KEY_TIME_FORMAT = "time_format"
         private const val KEY_FIRST_DAY = "first_day_of_week"
+        private const val KEY_DAY_VIEW_EXAMS = "day_view_exams"
         private const val KEY_DEFAULT_REMINDER_OFFSET = "default_reminder_offset"
         private const val KEY_TASK_REMINDERS = "task_reminders"
         private const val KEY_CLASS_REMINDERS = "class_reminders"

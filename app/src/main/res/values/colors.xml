@@ -32,4 +32,17 @@
     <color name="widget_dark_primary">#FFE6E1E9</color>
     <color name="widget_light_accent">#FFC62828</color>
     <color name="widget_dark_accent">#FFFF8A80</color>
+    <color name="today_accent">#FFFFB300</color>
+    <color name="today_on_accent">#FF1F1F1F</color>
+    <color name="overdue_bg">#1FB3261E</color>
+    <color name="divider">#1F000000</color>
+    <color name="tag_individual_fg">#FF00695C</color>
+    <color name="tag_individual_bg">#1F00695C</color>
+    <color name="tag_group_fg">#FF5E35B1</color>
+    <color name="tag_group_bg">#1F5E35B1</color>
+    <color name="tag_high_fg">#FFC62828</color>
+    <color name="tag_high_bg">#1FC62828</color>
+    <color name="status_in_progress_bg">#1F2F6FDE</color>
+    <color name="status_review_bg">#1FB7791F</color>
+    <color name="status_revision_bg">#1FC2543A</color>
 </resources>

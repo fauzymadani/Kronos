@@ -42,8 +42,8 @@ data class BackupData(
 )
 
 object BackupJsonCodec {
-    const val FORMAT_VERSION = 2
-    const val DATABASE_SCHEMA_VERSION = 9
+    const val FORMAT_VERSION = 3
+    const val DATABASE_SCHEMA_VERSION = 10
 
     fun encode(data: BackupData): String = JSONObject().apply {
         put("formatVersion", FORMAT_VERSION)
@@ -71,7 +71,8 @@ object BackupJsonCodec {
         } }))
         put("exams", JSONArray(data.exams.map { JSONObject().apply {
             put("id", it.id); put("title", it.title); putNullable("subjectId", it.subjectId)
-            put("date", it.date); putNullable("startTime", it.startTime); putNullable("room", it.room)
+            put("date", it.date); putNullable("startTime", it.startTime); putNullable("endTime", it.endTime)
+            putNullable("room", it.room)
             putNullable("seat", it.seat); putNullable("notes", it.notes)
         } }))
         put("holidays", JSONArray(data.holidays.map { JSONObject().apply {
@@ -146,7 +147,7 @@ object BackupJsonCodec {
     }
     private fun exam(o: JSONObject) = Exam(
         o.requiredLong("id"), o.requiredString("title"), o.longOrNull("subjectId"),
-        LocalDate.parse(o.requiredString("date")), o.timeOrNull("startTime"),
+        LocalDate.parse(o.requiredString("date")), o.timeOrNull("startTime"), o.timeOrNull("endTime"),
         o.stringOrNull("room"), o.stringOrNull("seat"), o.stringOrNull("notes")
     )
     private fun holiday(o: JSONObject) = Holiday(

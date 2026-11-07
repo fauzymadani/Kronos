@@ -22,11 +22,9 @@ import com.example.kronos.data.local.TaskWithSubject
 import com.example.kronos.databinding.FragmentTasksBinding
 import com.example.kronos.lib.AssignmentType
 import com.example.kronos.lib.TaskFilter
-import com.example.kronos.lib.TaskListRow
-import com.example.kronos.lib.TaskSort
+import com.example.kronos.lib.TaskGroupMode
 import com.example.kronos.lib.TaskStatus
 import com.example.kronos.lib.TaskSummary
-import com.example.kronos.lib.summarize
 import com.example.kronos.notifications.TaskExamReminderScheduler
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -46,12 +44,15 @@ class TasksFragment : Fragment() {
             TaskExamReminderScheduler(requireContext())
         )
     }
-    private val adapter = TaskAdapter(::editTask) { task, status ->
-        viewModel.setStatus(task.id, status)
-    }
-    private var filter = TaskFilter.ALL
-    private var sort = TaskSort.DUE_DATE
-    private var taskEditor: TaskEditorBottomSheet? = null
+    private val adapter = TaskAdapter(
+        onClick = ::editTask,
+        onStatusSelected = { task, status -> viewModel.setStatus(task.id, status) },
+        onHeaderClick = { viewModel.toggleDoneExpanded() }
+    )
+    private val chips = LinkedHashMap<TaskFilter, Chip>()
+    // Looked up by tag: a dismissed editor must not stay referenced by this fragment.
+    private val taskEditor: TaskEditorBottomSheet?
+        get() = parentFragmentManager.findFragmentByTag("taskEditor") as? TaskEditorBottomSheet
     private var categoriesDialog: AlertDialog? = null
     private var categoriesContainer: android.widget.LinearLayout? = null
 
@@ -64,12 +65,6 @@ class TasksFragment : Fragment() {
         binding.taskList.layoutManager = LinearLayoutManager(requireContext())
         binding.taskList.adapter = adapter
         binding.toolbar.inflateMenu(R.menu.tasks_menu)
-        binding.toolbar.setOnMenuItemClickListener {
-            if (it.itemId == R.id.manage_categories) {
-                showCategories()
-                true
-            } else false
-        }
 
         setupFilters()
         attachSwipeActions()
@@ -81,15 +76,9 @@ class TasksFragment : Fragment() {
             TaskEditorBottomSheet.REQUEST,
             viewLifecycleOwner
         ) { _, result -> handleResult(result) }
-        parentFragmentManager.setFragmentResultListener(
-            TaskEditorBottomSheet.CLOSED,
-            viewLifecycleOwner
-        ) { _, _ ->
-            taskEditor = null
-        }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.tasks.collect { submitFiltered(it) } }
+                launch { viewModel.state.collect { render(it) } }
                 launch {
                     viewModel.subjects.collect { subjects ->
                         taskEditor?.updateSubjects(subjects)
@@ -111,43 +100,44 @@ class TasksFragment : Fragment() {
 
     private fun setupFilters() {
         listOf(
-            TaskFilter.ALL to R.string.all,
             TaskFilter.ACTIVE to R.string.filter_active,
+            TaskFilter.ALL to R.string.all,
             TaskFilter.OVERDUE to R.string.overdue,
-            TaskFilter.NOT_STARTED to R.string.status_not_started,
-            TaskFilter.IN_PROGRESS to R.string.status_in_progress,
-            TaskFilter.REVIEW to R.string.status_review,
-            TaskFilter.REVISION to R.string.status_revision,
             TaskFilter.DONE to R.string.done
         ).forEach { (value, label) ->
+            val density = resources.displayMetrics.density
             val chip = Chip(requireContext()).apply {
                 id = View.generateViewId()
                 text = getString(label)
                 isCheckable = true
-                setOnClickListener {
-                    filter = value
-                    submitFiltered(viewModel.tasks.value)
-                }
+                textSize = 13f
+                chipMinHeight = 32 * density
+                chipStartPadding = 12 * density
+                chipEndPadding = 12 * density
+                setEnsureMinTouchTargetSize(false)
+                setOnClickListener { viewModel.setFilter(value) }
             }
+            chips[value] = chip
             binding.filterChips.addView(chip)
-            if (value == filter) chip.isChecked = true
         }
-        binding.sortButton.setOnClickListener {
-            sort = when (sort) {
-                TaskSort.DUE_DATE -> TaskSort.PRIORITY
-                TaskSort.PRIORITY -> TaskSort.SUBJECT
-                TaskSort.SUBJECT -> TaskSort.STATUS
-                TaskSort.STATUS -> TaskSort.DUE_DATE
-            }
-            binding.sortButton.setText(
-                when (sort) {
-                    TaskSort.DUE_DATE -> R.string.sort_due_date
-                    TaskSort.PRIORITY -> R.string.sort_priority
-                    TaskSort.SUBJECT -> R.string.sort_subject
-                    TaskSort.STATUS -> R.string.sort_status
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                R.id.group_due_date -> {
+                    item.isChecked = true
+                    viewModel.setGroupMode(TaskGroupMode.BY_DUE_DATE)
+                    true
                 }
-            )
-            submitFiltered(viewModel.tasks.value)
+                R.id.group_status -> {
+                    item.isChecked = true
+                    viewModel.setGroupMode(TaskGroupMode.BY_STATUS)
+                    true
+                }
+                R.id.manage_categories -> {
+                    showCategories()
+                    true
+                }
+                else -> false
+            }
         }
     }
 
@@ -155,6 +145,18 @@ class TasksFragment : Fragment() {
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
         ) {
+            override fun getMovementFlags(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ): Int = makeMovementFlags(
+                0,
+                if (viewHolder is TaskAdapter.Holder) {
+                    ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT
+                } else {
+                    0
+                }
+            )
+
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
@@ -164,11 +166,11 @@ class TasksFragment : Fragment() {
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.adapterPosition
                 if (position == RecyclerView.NO_POSITION) return
-                val item = adapter.currentList[position]
+                val item = adapter.currentList[position] as? TaskListItem.Row ?: return
                 if (direction == ItemTouchHelper.RIGHT) {
-                    markDone(position, item)
+                    markDone(position, item.task)
                 } else {
-                    deleteTask(item)
+                    deleteTask(item.task)
                 }
             }
         }).attachToRecyclerView(binding.taskList)
@@ -198,27 +200,27 @@ class TasksFragment : Fragment() {
         }
     }
 
-    private fun submitFiltered(source: List<TaskWithSubject>) {
-        val today = LocalDate.now()
-        val rows = source.map { it.toRow() }
-        renderSummary(summarize(rows, today))
-        val comparator = sort.comparator()
-        val filtered = rows.indices
-            .filter { filter.matches(rows[it], today) }
-            .sortedWith(Comparator { first, second -> comparator.compare(rows[first], rows[second]) })
-            .map { source[it] }
-        adapter.submitList(filtered)
-        val empty = filtered.isEmpty()
+    private fun render(ui: TasksUiState) {
+        renderSummary(ui.summary)
+        adapter.submitList(ui.items)
+        chips[ui.filter]?.isChecked = true
+        val menu = binding.toolbar.menu
+        menu.findItem(R.id.group_due_date)?.isChecked = ui.mode == TaskGroupMode.BY_DUE_DATE
+        menu.findItem(R.id.group_status)?.isChecked = ui.mode == TaskGroupMode.BY_STATUS
+        val empty = ui.items.isEmpty()
         binding.taskList.visibility = if (empty) View.GONE else View.VISIBLE
         binding.emptyState.visibility = if (empty) View.VISIBLE else View.GONE
-        binding.emptyState.setText(
-            if (filter == TaskFilter.ALL) R.string.no_tasks_yet
-            else R.string.no_tasks_match_filter
-        )
+        if (empty) binding.emptyState.setText(emptyMessage(ui))
+    }
+
+    private fun emptyMessage(ui: TasksUiState): Int = when {
+        !ui.hasTasks -> R.string.no_tasks_yet
+        ui.filter == TaskFilter.ACTIVE -> R.string.nothing_to_do
+        else -> R.string.no_tasks_match_filter
     }
 
     private fun renderSummary(summary: TaskSummary) {
-        binding.summary.text = getString(
+        binding.toolbar.subtitle = getString(
             R.string.tasks_summary,
             summary.total,
             summary.overdue,
@@ -227,14 +229,6 @@ class TasksFragment : Fragment() {
         )
     }
 
-    private fun TaskWithSubject.toRow() = TaskListRow(
-        dueDate = dueDate?.let(LocalDate::parse),
-        status = TaskStatus.fromCode(status),
-        priority = priority,
-        subject = subjectName,
-        completedAt = completedAt
-    )
-
     private fun editTask(item: TaskWithSubject) {
         viewLifecycleOwner.lifecycleScope.launch {
             openEditor(viewModel.find(item.id))
@@ -242,10 +236,9 @@ class TasksFragment : Fragment() {
     }
 
     private fun openEditor(task: Task?) {
-        taskEditor = TaskEditorBottomSheet.new(
+        TaskEditorBottomSheet.new(
             task, viewModel.subjects.value, viewModel.categories.value
-        )
-        taskEditor?.show(parentFragmentManager, "taskEditor")
+        ).show(parentFragmentManager, "taskEditor")
     }
 
     private fun handleResult(result: Bundle) {
@@ -457,7 +450,6 @@ class TasksFragment : Fragment() {
 
     override fun onDestroyView() {
         binding.taskList.adapter = null
-        taskEditor = null
         categoriesDialog?.dismiss()
         categoriesContainer = null
         _binding = null

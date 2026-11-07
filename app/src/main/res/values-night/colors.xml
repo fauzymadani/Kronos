@@ -21,4 +21,17 @@
     <color name="status_review">#FFE0A93B</color>
     <color name="status_revision">#FFF08A6C</color>
     <color name="status_done">#FF5FBF86</color>
+    <color name="today_accent">#FFFFB300</color>
+    <color name="today_on_accent">#FF1F1F1F</color>
+    <color name="overdue_bg">#26F2B8B5</color>
+    <color name="divider">#1FFFFFFF</color>
+    <color name="tag_individual_fg">#FF4DB6AC</color>
+    <color name="tag_individual_bg">#264DB6AC</color>
+    <color name="tag_group_fg">#FFB39DDB</color>
+    <color name="tag_group_bg">#26B39DDB</color>
+    <color name="tag_high_fg">#FFEF9A9A</color>
+    <color name="tag_high_bg">#26EF9A9A</color>
+    <color name="status_in_progress_bg">#266FA3FF</color>
+    <color name="status_review_bg">#26E0A93B</color>
+    <color name="status_revision_bg">#26F08A6C</color>
 </resources>

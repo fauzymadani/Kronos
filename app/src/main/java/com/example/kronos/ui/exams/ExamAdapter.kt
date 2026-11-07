@@ -25,7 +25,11 @@ import java.time.LocalTime
 
 sealed interface ExamListRow {
     data class Header(val section: ExamSection, val count: Int) : ExamListRow
-    data class Exam(val item: ExamWithSubject, val countdown: ExamCountdown) : ExamListRow
+    data class Exam(
+        val item: ExamWithSubject,
+        val countdown: ExamCountdown,
+        val isNext: Boolean = false
+    ) : ExamListRow
 }
 
 class ExamAdapter(
@@ -43,7 +47,7 @@ class ExamAdapter(
         }
 
     fun submitExams(exams: List<ExamWithSubject>, today: LocalDate) =
-        submitList(exams.map { row(it, today) })
+        submitList(exams.map { row(it, today) }.markNext())
 
     fun submitSections(sections: List<ExamSectionGroup>, pastExpanded: Boolean, today: LocalDate) {
         val rows = ArrayList<ExamListRow>(sections.sumOf { it.exams.size } + sections.size)
@@ -53,7 +57,18 @@ class ExamAdapter(
                 group.exams.forEach { rows += row(it, today) }
             }
         }
-        submitList(rows)
+        submitList(rows.markNext())
+    }
+
+    /** Flags the soonest upcoming exam so its row can show the "Next" badge. */
+    private fun List<ExamListRow>.markNext(): List<ExamListRow> {
+        val index = indexOfFirst {
+            it is ExamListRow.Exam && it.countdown.kind != CountdownKind.PAST
+        }
+        if (index < 0) return this
+        val rows = toMutableList()
+        rows[index] = (rows[index] as ExamListRow.Exam).copy(isNext = true)
+        return rows
     }
 
     private fun row(exam: ExamWithSubject, today: LocalDate) =
@@ -110,6 +125,8 @@ class ExamAdapter(
 
         init {
             binding.colorBar.background = bar
+            binding.nextTag.text = context.getString(R.string.exam_next)
+            binding.nextTag.setTagOutline(primaryColor)
             binding.root.setOnClickListener { boundItem?.let(onClick) }
         }
 
@@ -118,6 +135,7 @@ class ExamAdapter(
             boundItem = item
             bar.color = parseUserColor(item.subjectColor, primaryColor)
             binding.subject.text = item.subjectName ?: item.title
+            binding.nextTag.isVisible = row.isNext
             when (row.countdown.kind) {
                 CountdownKind.DAYS -> {
                     binding.countdownTitle.text = row.countdown.days.toString()
@@ -139,6 +157,9 @@ class ExamAdapter(
             ).joinToString(" · ")
             binding.examWhere.isVisible = where.isNotEmpty()
             binding.examWhere.text = where
+            val note = item.notes
+            binding.examNote.isVisible = !note.isNullOrEmpty()
+            binding.examNote.text = note
             binding.root.alpha = if (row.countdown.kind == CountdownKind.PAST) 0.55f else 1f
         }
 

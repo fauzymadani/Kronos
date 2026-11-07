@@ -20,6 +20,7 @@ import com.example.kronos.data.TimeFormat
 import com.example.kronos.data.local.DatabaseProvider
 import com.example.kronos.data.local.Exam
 import com.example.kronos.data.local.ExamWithSubject
+import com.example.kronos.data.local.Subject
 import com.example.kronos.databinding.FragmentExamsBinding
 import com.example.kronos.lib.CountdownKind
 import com.example.kronos.lib.ExamSection
@@ -29,6 +30,7 @@ import com.example.kronos.lib.formatDisplayDate
 import com.example.kronos.lib.formatDisplayTime
 import com.example.kronos.lib.formatMonthTitle
 import com.example.kronos.notifications.TaskExamReminderScheduler
+import com.google.android.material.chip.Chip
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -47,6 +49,7 @@ class ExamsFragment : Fragment() {
     private val monthAdapter = ExamMonthAdapter(::selectDate)
     private val dayAdapter = ExamAdapter(::editExam)
     private val listAdapter = ExamAdapter(::editExam, ::toggleSection)
+    private val filterChips = LinkedHashMap<Long?, Chip>()
     private var pastExpanded = false
     private var timeFormat = TimeFormat.HOUR_24
 
@@ -80,6 +83,7 @@ class ExamsFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch { viewModel.subjects.collect { rebuildFilterChips(it) } }
                 viewModel.uiState.collect(::render)
             }
         }
@@ -96,6 +100,7 @@ class ExamsFragment : Fragment() {
     private fun render(state: ExamUiState) {
         val calendarMode = state.mode == ExamViewMode.CALENDAR
         binding.modeToggle.check(if (calendarMode) R.id.modeCalendar else R.id.modeList)
+        filterChips[state.filterSubjectId]?.isChecked = true
         binding.monthTitle.text = formatMonthTitle(state.month)
         state.weekdayLabels.forEachIndexed { index, label ->
             (binding.weekdayRow.getChildAt(index) as? TextView)?.text = label
@@ -104,6 +109,15 @@ class ExamsFragment : Fragment() {
         binding.calendarGroup.isVisible = calendarMode && state.hasExams
         binding.listMode.isVisible = !calendarMode && state.hasExams
         binding.emptyExams.isVisible = !state.hasExams
+        if (!state.hasExams) {
+            binding.emptyExams.setText(
+                if (state.filterSubjectId == null) {
+                    R.string.no_exams_yet
+                } else {
+                    R.string.no_exams_match_filter
+                }
+            )
+        }
 
         binding.dayTitle.text = formatDayTitle(state.selectedDate)
         dayAdapter.submitExams(state.selectedDateExams, state.today)
@@ -126,6 +140,32 @@ class ExamsFragment : Fragment() {
                 dateWithTime(next)
             )
         }
+    }
+
+    private fun rebuildFilterChips(subjects: List<Subject>) {
+        binding.filterChips.removeAllViews()
+        filterChips.clear()
+        addFilterChip(null, getString(R.string.all))
+        subjects.forEach { addFilterChip(it.id, it.name) }
+        binding.filterChips.isVisible = subjects.isNotEmpty()
+        filterChips[viewModel.uiState.value.filterSubjectId]?.isChecked = true
+    }
+
+    private fun addFilterChip(subjectId: Long?, label: String) {
+        val density = resources.displayMetrics.density
+        val chip = Chip(requireContext()).apply {
+            id = View.generateViewId()
+            text = label
+            isCheckable = true
+            textSize = 13f
+            chipMinHeight = 32 * density
+            chipStartPadding = 12 * density
+            chipEndPadding = 12 * density
+            setEnsureMinTouchTargetSize(false)
+            setOnClickListener { viewModel.setFilter(subjectId) }
+        }
+        filterChips[subjectId] = chip
+        binding.filterChips.addView(chip)
     }
 
     private fun countdownText(today: LocalDate, date: LocalDate): String {
@@ -170,6 +210,10 @@ class ExamsFragment : Fragment() {
             viewLifecycleOwner.lifecycleScope.launch { viewModel.find(id)?.let(viewModel::delete) }
             return
         }
+        val start = result.getString(ExamEditorBottomSheet.RESULT_TIME)?.takeIf { it.isNotBlank() }
+            ?.let(LocalTime::parse)
+        val end = result.getString(ExamEditorBottomSheet.RESULT_END_TIME)?.takeIf { it.isNotBlank() }
+            ?.let(LocalTime::parse)
         viewModel.save(
             Exam(
                 id = id,
@@ -178,8 +222,8 @@ class ExamsFragment : Fragment() {
                 }?.name ?: "Exam",
                 subjectId = result.getLong(ExamEditorBottomSheet.RESULT_SUBJECT_ID).takeUnless { it == 0L },
                 date = LocalDate.parse(result.getString(ExamEditorBottomSheet.RESULT_DATE)),
-                startTime = result.getString(ExamEditorBottomSheet.RESULT_TIME)?.takeIf { it.isNotBlank() }
-                    ?.let(LocalTime::parse),
+                startTime = start,
+                endTime = end?.takeIf { start != null && it > start },
                 room = result.getString(ExamEditorBottomSheet.RESULT_ROOM)?.takeIf { it.isNotBlank() },
                 seat = result.getString(ExamEditorBottomSheet.RESULT_SEAT)?.takeIf { it.isNotBlank() },
                 notes = result.getString(ExamEditorBottomSheet.RESULT_NOTES)?.takeIf { it.isNotBlank() }

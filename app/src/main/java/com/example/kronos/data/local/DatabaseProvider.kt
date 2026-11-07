@@ -17,7 +17,7 @@ object DatabaseProvider {
                 "kronos.db"
             ).addMigrations(
                 MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9
+                MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10
             ).build().also { instance = it }
         }
 
@@ -197,6 +197,12 @@ object DatabaseProvider {
             db.execSQL("ALTER TABLE tasks ADD COLUMN assignmentType INTEGER NOT NULL DEFAULT 0")
             db.execSQL("ALTER TABLE tasks ADD COLUMN completedAt INTEGER")
             db.execSQL("UPDATE tasks SET status = 4 WHERE done = 1")
+        }
+    }
+
+    private val MIGRATION_9_10 = object : Migration(9, 10) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE exams ADD COLUMN endTime TEXT")
         }
     }
 }

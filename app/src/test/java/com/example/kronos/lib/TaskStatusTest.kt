@@ -14,9 +14,12 @@ class TaskStatusTest {
         dueDate: LocalDate? = null,
         status: TaskStatus = TaskStatus.NOT_STARTED,
         priority: Int = 0,
-        subject: String? = null,
-        completedAt: Long? = null
-    ) = TaskListRow(dueDate, status, priority, subject, completedAt)
+        completedAt: Long? = null,
+        title: String = ""
+    ) = TaskListRow(dueDate, status, priority, completedAt, title)
+
+    private fun sections(tasks: List<TaskListRow>, mode: TaskGroupMode) =
+        groupTasks(tasks, today, mode) { it }
 
     @Test
     fun codesAreStableAndUnknownFallsBack() {
@@ -75,53 +78,133 @@ class TaskStatusTest {
             row(today.minusDays(2), TaskStatus.IN_PROGRESS),
             row(today, TaskStatus.NOT_STARTED),
             row(today.plusDays(1), TaskStatus.REVIEW),
-            row(today.plusDays(2), TaskStatus.REVISION),
             row(today.minusDays(3), TaskStatus.DONE)
         )
         fun filtered(filter: TaskFilter) = rows.filter { filter.matches(it, today) }
 
         assertEquals(rows, filtered(TaskFilter.ALL))
-        assertEquals(4, filtered(TaskFilter.ACTIVE).size)
+        assertEquals(rows.take(3), filtered(TaskFilter.ACTIVE))
         assertEquals(listOf(rows[0]), filtered(TaskFilter.OVERDUE))
-        assertEquals(listOf(rows[1]), filtered(TaskFilter.NOT_STARTED))
-        assertEquals(listOf(rows[0]), filtered(TaskFilter.IN_PROGRESS))
-        assertEquals(listOf(rows[2]), filtered(TaskFilter.REVIEW))
-        assertEquals(listOf(rows[3]), filtered(TaskFilter.REVISION))
-        assertEquals(listOf(rows[4]), filtered(TaskFilter.DONE))
+        assertEquals(listOf(rows[3]), filtered(TaskFilter.DONE))
     }
 
     @Test
-    fun defaultSortPutsActiveByDueDateThenDoneByCompletion() {
-        val late = row(today.plusDays(3), TaskStatus.IN_PROGRESS)
+    fun dueDateBucketsRespectBoundaries() {
+        val yesterday = row(today.minusDays(1), TaskStatus.IN_PROGRESS)
+        val dueToday = row(today, TaskStatus.IN_PROGRESS)
+        val inOneDay = row(today.plusDays(1), TaskStatus.IN_PROGRESS)
+        val inSevenDays = row(today.plusDays(7), TaskStatus.IN_PROGRESS)
+        val inEightDays = row(today.plusDays(8), TaskStatus.IN_PROGRESS)
         val noDate = row(null, TaskStatus.IN_PROGRESS)
-        val soon = row(today.plusDays(1), TaskStatus.IN_PROGRESS)
-        val olderDone = row(null, TaskStatus.DONE, completedAt = 500L)
-        val newerDone = row(today.minusDays(5), TaskStatus.DONE, completedAt = 900L)
+        val doneYesterday = row(today.minusDays(1), TaskStatus.DONE, completedAt = 5L)
 
-        val sorted = listOf(olderDone, late, newerDone, noDate, soon)
-            .sortedWith(TaskSort.DUE_DATE.comparator())
+        val grouped = sections(
+            listOf(yesterday, dueToday, inOneDay, inSevenDays, inEightDays, noDate, doneYesterday),
+            TaskGroupMode.BY_DUE_DATE
+        )
 
-        assertEquals(listOf(soon, late, noDate, newerDone, olderDone), sorted)
+        assertEquals(
+            listOf(
+                TaskSectionKey.OVERDUE,
+                TaskSectionKey.TODAY,
+                TaskSectionKey.THIS_WEEK,
+                TaskSectionKey.LATER,
+                TaskSectionKey.NO_DATE,
+                TaskSectionKey.DONE
+            ),
+            grouped.map { it.key }
+        )
+        assertEquals(listOf(yesterday), grouped[0].tasks)
+        assertEquals(listOf(dueToday), grouped[1].tasks)
+        assertEquals(listOf(inOneDay, inSevenDays), grouped[2].tasks)
+        assertEquals(listOf(inEightDays), grouped[3].tasks)
+        assertEquals(listOf(noDate), grouped[4].tasks)
+        assertEquals(listOf(doneYesterday), grouped[5].tasks)
     }
 
     @Test
-    fun otherSortsAreDeterministic() {
-        val a = row(today.plusDays(2), TaskStatus.REVISION, priority = 3, subject = "Math")
-        val b = row(today.plusDays(1), TaskStatus.DONE, priority = 3, subject = "art", completedAt = 1L)
-        val c = row(null, TaskStatus.NOT_STARTED, priority = 1, subject = null)
+    fun emptySectionsAreOmitted() {
+        val dueToday = row(today, TaskStatus.NOT_STARTED)
+        val done = row(null, TaskStatus.DONE, completedAt = 1L)
+
+        val grouped = sections(listOf(dueToday, done), TaskGroupMode.BY_DUE_DATE)
+
+        assertEquals(listOf(TaskSectionKey.TODAY, TaskSectionKey.DONE), grouped.map { it.key })
+        assertEquals(listOf(dueToday), grouped[0].tasks)
+        assertEquals(listOf(done), grouped[1].tasks)
+    }
+
+    @Test
+    fun sectionOrderIsDueDateThenPriorityThenTitle() {
+        val highLater = row(today, TaskStatus.IN_PROGRESS, priority = 2, title = "b")
+        val lowSoon = row(today, TaskStatus.IN_PROGRESS, priority = 0, title = "a")
+        val highSoon = row(today, TaskStatus.IN_PROGRESS, priority = 2, title = "a")
+        val tomorrow = row(today.plusDays(1), TaskStatus.IN_PROGRESS, priority = 0, title = "z")
+
+        val grouped = sections(listOf(tomorrow, highLater, lowSoon, highSoon), TaskGroupMode.BY_DUE_DATE)
 
         assertEquals(
-            listOf(b, a, c),
-            listOf(c, a, b).sortedWith(TaskSort.PRIORITY.comparator())
+            listOf(TaskSectionKey.TODAY, TaskSectionKey.THIS_WEEK),
+            grouped.map { it.key }
         )
+        assertEquals(listOf(highSoon, highLater, lowSoon), grouped[0].tasks)
+        assertEquals(listOf(tomorrow), grouped[1].tasks)
+    }
+
+    @Test
+    fun doneSectionIsNewestFirst() {
+        val older = row(today.minusDays(1), TaskStatus.DONE, completedAt = 100L)
+        val newer = row(today.minusDays(3), TaskStatus.DONE, completedAt = 300L)
+        val noStamp = row(today.minusDays(2), TaskStatus.DONE)
+
+        val section = sections(listOf(older, noStamp, newer), TaskGroupMode.BY_DUE_DATE).single()
+
+        assertEquals(TaskSectionKey.DONE, section.key)
+        assertEquals(listOf(newer, older, noStamp), section.tasks)
+    }
+
+    @Test
+    fun statusModeUsesFixedSectionOrder() {
+        val done = row(today, TaskStatus.DONE, completedAt = 1L)
+        val notStarted = row(today, TaskStatus.NOT_STARTED)
+        val review = row(today, TaskStatus.REVIEW)
+        val revision = row(today, TaskStatus.REVISION)
+        val inProgress = row(today, TaskStatus.IN_PROGRESS)
+
+        val grouped = sections(
+            listOf(done, notStarted, review, revision, inProgress),
+            TaskGroupMode.BY_STATUS
+        )
+
         assertEquals(
-            listOf(b, a, c),
-            listOf(b, a, c).sortedWith(TaskSort.SUBJECT.comparator())
+            listOf(
+                TaskSectionKey.IN_PROGRESS,
+                TaskSectionKey.REVISION,
+                TaskSectionKey.REVIEW,
+                TaskSectionKey.NOT_STARTED,
+                TaskSectionKey.DONE
+            ),
+            grouped.map { it.key }
         )
-        assertEquals(
-            listOf(c, a, b),
-            listOf(a, b, c).sortedWith(TaskSort.STATUS.comparator())
-        )
+        assertEquals(listOf(inProgress), grouped[0].tasks)
+        assertEquals(listOf(revision), grouped[1].tasks)
+        assertEquals(listOf(review), grouped[2].tasks)
+        assertEquals(listOf(notStarted), grouped[3].tasks)
+        assertEquals(listOf(done), grouped[4].tasks)
+    }
+
+    @Test
+    fun doneFilterGivesOneFlatSection() {
+        val older = row(today, TaskStatus.DONE, completedAt = 1L)
+        val newer = row(today.minusDays(3), TaskStatus.DONE, completedAt = 9L)
+        val active = row(today, TaskStatus.IN_PROGRESS)
+
+        val visible = listOf(older, newer, active).filter { TaskFilter.DONE.matches(it, today) }
+        val grouped = sections(visible, TaskGroupMode.BY_DUE_DATE)
+
+        assertEquals(1, grouped.size)
+        assertEquals(TaskSectionKey.DONE, grouped[0].key)
+        assertEquals(listOf(newer, older), grouped[0].tasks)
     }
 
     @Test

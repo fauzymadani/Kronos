@@ -122,6 +122,7 @@ class TimetableFragment : Fragment() {
                 R.id.day_view -> showDayView()
                 R.id.week_view -> showWeekView()
                 R.id.month_view -> showMonthView()
+                R.id.show_exams -> toggleDayExams()
                 R.id.settings -> showSettings()
                 R.id.theme_settings -> showThemeSettings()
                 R.id.reminder_settings -> showReminderSettings()
@@ -188,7 +189,11 @@ class TimetableFragment : Fragment() {
                 launch {
                     DatabaseProvider.get(requireContext()).examDao().observeAll().collect {
                         monthExams = it
+                        binding.weekGrid.setExams(it)
                         refreshMonth()
+                        if (binding.dayTimelineContainer.visibility == View.VISIBLE) {
+                            applyHolidayState()
+                        }
                     }
                 }
                 launch {
@@ -270,6 +275,14 @@ class TimetableFragment : Fragment() {
     private fun toast(message: String) =
         android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_LONG).show()
 
+    private fun toggleDayExams(): Boolean {
+        val settings = SettingsStore(requireContext())
+        settings.dayViewShowsExams = !settings.dayViewShowsExams
+        binding.toolbar.menu.findItem(R.id.show_exams)?.isChecked = settings.dayViewShowsExams
+        applyHolidayState()
+        return true
+    }
+
     private fun showDayView(): Boolean {
         binding.dayTabs.visibility = View.VISIBLE
         binding.dayTimelineContainer.visibility = View.VISIBLE
@@ -282,6 +295,9 @@ class TimetableFragment : Fragment() {
         binding.toolbar.menu.findItem(R.id.day_view)?.isChecked = true
         binding.toolbar.menu.findItem(R.id.week_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.month_view)?.isChecked = false
+        binding.toolbar.menu.findItem(R.id.show_exams)?.isVisible = true
+        binding.toolbar.menu.findItem(R.id.show_exams)?.isChecked =
+            SettingsStore(requireContext()).dayViewShowsExams
         return true
     }
 
@@ -299,6 +315,7 @@ class TimetableFragment : Fragment() {
         binding.toolbar.menu.findItem(R.id.day_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.week_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.month_view)?.isChecked = true
+        binding.toolbar.menu.findItem(R.id.show_exams)?.isVisible = false
         binding.toolbar.title = "${getString(R.string.timetable_title)} · ${formatDisplayDate(selectedMonthDay)}"
         refreshMonth()
         return true
@@ -338,9 +355,10 @@ class TimetableFragment : Fragment() {
 
     private fun applyHolidayState() {
         if (_binding == null) return
+        val settings = SettingsStore(requireContext())
         val dayDate = startOfDisplayedWeek(
             LocalDate.now(),
-            SettingsStore(requireContext()).firstDayOfWeek
+            settings.firstDayOfWeek
         ).plusDays(
             dayTabIndex(viewModel.day.value).toLong()
         )
@@ -358,7 +376,16 @@ class TimetableFragment : Fragment() {
         }.toSet()
         binding.weekGrid.setHolidays(holidayDates)
         if (binding.dayTimelineContainer.visibility == View.VISIBLE) {
-            binding.dayTimeline.setDay(dayDate, if (holiday != null) emptyList() else daySessions)
+            val exams = if (settings.dayViewShowsExams) {
+                monthExams.filter { it.date == dayDate.toString() }
+            } else {
+                emptyList()
+            }
+            binding.dayTimeline.setDay(
+                dayDate,
+                if (holiday != null) emptyList() else daySessions,
+                exams
+            )
             binding.toolbar.title = "${formatDisplayDate(dayDate)} - " +
                 "Week ${viewModel.currentWeek()}"
         } else if (binding.classList.visibility == View.VISIBLE) {
@@ -384,6 +411,7 @@ class TimetableFragment : Fragment() {
         binding.toolbar.menu.findItem(R.id.day_view)?.isChecked = false
         binding.toolbar.menu.findItem(R.id.week_view)?.isChecked = true
         binding.toolbar.menu.findItem(R.id.month_view)?.isChecked = false
+        binding.toolbar.menu.findItem(R.id.show_exams)?.isVisible = false
         binding.toolbar.title = "${getString(R.string.timetable_title)} · Week ${viewModel.currentWeek()}"
         return true
     }

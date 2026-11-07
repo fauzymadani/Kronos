@@ -177,6 +177,7 @@ class ExamCalendarTest {
         subjectColor = "#3F51B5",
         date = date,
         startTime = time,
+        endTime = null,
         room = null,
         seat = null,
         notes = null

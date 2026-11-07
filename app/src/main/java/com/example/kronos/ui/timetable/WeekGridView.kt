@@ -7,7 +7,9 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.graphics.ColorUtils
 import com.example.kronos.data.local.ClassSessionWithSubject
+import com.example.kronos.data.local.ExamWithSubject
 import com.example.kronos.data.FirstDayOfWeek
 import com.example.kronos.data.SettingsStore
 import com.example.kronos.data.TimeFormat
@@ -31,6 +33,7 @@ class WeekGridView @JvmOverloads constructor(
     private var holidayDates: Set<LocalDate> = emptySet()
     private val blockRects = ArrayList<RectF>(24)
     private val blockSessions = ArrayList<ClassSessionWithSubject>(24)
+    private var exams: List<ExamWithSubject> = emptyList()
     private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.grid_line)
         strokeWidth = dp(1f)
@@ -47,6 +50,17 @@ class WeekGridView @JvmOverloads constructor(
     private val holidayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = context.getColor(R.color.holiday_overlay)
     }
+    private val examRect = RectF()
+    private val examFillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val examStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = dp(1f)
+    }
+    private val examTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = context.getColor(R.color.on_surface)
+        textSize = dp(11f)
+    }
+    private val examTintAlpha = 0x1F
     private val days = arrayOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     private val rectPool = ArrayList<RectF>(24)
     private val hourHeight = dp(56f)
@@ -85,6 +99,11 @@ class WeekGridView @JvmOverloads constructor(
 
     fun setHolidays(value: Set<LocalDate>) {
         holidayDates = value
+        invalidate()
+    }
+
+    fun setExams(value: List<ExamWithSubject>) {
+        exams = value
         invalidate()
     }
 
@@ -162,6 +181,41 @@ class WeekGridView @JvmOverloads constructor(
             blockSessions += session
         }
         val weekStart = startOfDisplayedWeek(LocalDate.now(), firstDay)
+        val weekEnd = weekStart.plusDays(6)
+        exams.forEach { exam ->
+            val date = LocalDate.parse(exam.date)
+            if (date.isBefore(weekStart) || date.isAfter(weekEnd)) return@forEach
+            val dayIndex = dayColumnIndex(date.dayOfWeek.value, firstDay)
+            if (dayIndex !in 0..6) return@forEach
+            val start = exam.startTime?.let(LocalTime::parse)
+            val y = if (start == null) top + dp(2f)
+            else top + ((start.hour + start.minute / 60f) - firstHour) * hourHeight
+            if (y >= height) return@forEach
+            // no start time: short chip pinned to the top of the day
+            val blockHeight = if (start == null) dp(28f) else hourHeight
+            examRect.set(
+                left + dayIndex * columnWidth + dp(2f),
+                max(top, y) + dp(2f),
+                left + (dayIndex + 1) * columnWidth - dp(2f),
+                minOf(y + blockHeight, height.toFloat() - dp(2f))
+            )
+            val color = parseUserColor(exam.subjectColor, context.getColor(R.color.primary))
+            examFillPaint.color = ColorUtils.setAlphaComponent(color, examTintAlpha)
+            examStrokePaint.color = color
+            canvas.drawRoundRect(examRect, dp(4f), dp(4f), examFillPaint)
+            canvas.drawRoundRect(examRect, dp(4f), dp(4f), examStrokePaint)
+            canvas.save()
+            canvas.clipRect(examRect)
+            drawFittedText(
+                canvas,
+                exam.subjectName ?: exam.title,
+                examRect.left + dp(4f),
+                examRect.right - dp(4f),
+                examRect.top + dp(15f),
+                examTextPaint
+            )
+            canvas.restore()
+        }
         (0..6).forEach { dayIndex ->
             if (weekStart.plusDays(dayIndex.toLong()) in holidayDates) {
                 val x = left + dayIndex * columnWidth
@@ -195,14 +249,15 @@ class WeekGridView @JvmOverloads constructor(
         value: String,
         left: Float,
         right: Float,
-        baseline: Float
+        baseline: Float,
+        paint: Paint = blockTextPaint
     ) {
         val maxWidth = right - left
         if (maxWidth <= 0f) return
         var text = value
-        while (text.length > 1 && blockTextPaint.measureText(text) > maxWidth) {
+        while (text.length > 1 && paint.measureText(text) > maxWidth) {
             text = text.dropLast(2) + "\u2026"
         }
-        canvas.drawText(text, left, baseline, blockTextPaint)
+        canvas.drawText(text, left, baseline, paint)
     }
 }

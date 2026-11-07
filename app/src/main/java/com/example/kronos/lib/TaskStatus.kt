@@ -1,6 +1,7 @@
 package com.example.kronos.lib
 
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /**
  * Task workflow status. [code] is the only value written to the database;
@@ -50,8 +51,8 @@ data class TaskListRow(
     val dueDate: LocalDate?,
     val status: TaskStatus,
     val priority: Int = 0,
-    val subject: String? = null,
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    val title: String = ""
 )
 
 data class TaskSummary(val total: Int, val overdue: Int, val byStatus: Map<TaskStatus, Int>) {
@@ -68,39 +69,93 @@ fun summarize(tasks: List<TaskListRow>, today: LocalDate): TaskSummary {
     return TaskSummary(tasks.size, overdue, counts)
 }
 
+/** List filters. Statuses are grouped, not filtered, so only four are left. */
 enum class TaskFilter {
-    ALL,
     ACTIVE,
+    ALL,
     OVERDUE,
-    NOT_STARTED,
-    IN_PROGRESS,
-    REVIEW,
-    REVISION,
     DONE;
 
     fun matches(task: TaskListRow, today: LocalDate): Boolean = when (this) {
         ALL -> true
         ACTIVE -> task.status != TaskStatus.DONE
         OVERDUE -> isOverdue(task.dueDate, task.status, today)
-        NOT_STARTED -> task.status == TaskStatus.NOT_STARTED
-        IN_PROGRESS -> task.status == TaskStatus.IN_PROGRESS
-        REVIEW -> task.status == TaskStatus.REVIEW
-        REVISION -> task.status == TaskStatus.REVISION
         DONE -> task.status == TaskStatus.DONE
     }
 }
 
-enum class TaskSort {
-    DUE_DATE,
-    PRIORITY,
-    SUBJECT,
-    STATUS;
+enum class TaskGroupMode { BY_DUE_DATE, BY_STATUS }
 
-    fun comparator(): Comparator<TaskListRow> = when (this) {
-        DUE_DATE -> dueDateOrder
-        PRIORITY -> priorityOrder
-        SUBJECT -> subjectOrder
-        STATUS -> statusOrder
+enum class TaskSectionKey {
+    OVERDUE, TODAY, THIS_WEEK, LATER, NO_DATE, IN_PROGRESS, REVISION, REVIEW, NOT_STARTED, DONE
+}
+
+/** One labelled block of the list. */
+data class TaskSection<T>(val key: TaskSectionKey, val tasks: List<T>)
+
+/**
+ * Splits [tasks] into the sections of [mode], in display order. Empty sections are dropped.
+ * [row] is called once per task so callers can keep their own richer task type.
+ */
+fun <T> groupTasks(
+    tasks: List<T>,
+    today: LocalDate,
+    mode: TaskGroupMode,
+    row: (T) -> TaskListRow
+): List<TaskSection<T>> {
+    val order = when (mode) {
+        TaskGroupMode.BY_DUE_DATE -> DUE_DATE_SECTIONS
+        TaskGroupMode.BY_STATUS -> STATUS_SECTIONS
+    }
+    val buckets = LinkedHashMap<TaskSectionKey, MutableList<Pair<T, TaskListRow>>>(order.size)
+    tasks.forEach { task ->
+        val values = row(task)
+        buckets.getOrPut(sectionOf(values, today, mode)) { ArrayList() }.add(task to values)
+    }
+    return order.mapNotNull { key ->
+        val entries = buckets[key] ?: return@mapNotNull null
+        val comparator = if (key == TaskSectionKey.DONE) newestFirst else dueThenPriority
+        entries.sortWith(Comparator { a, b -> comparator.compare(a.second, b.second) })
+        TaskSection(key, entries.map { it.first })
+    }
+}
+
+private val DUE_DATE_SECTIONS = listOf(
+    TaskSectionKey.OVERDUE,
+    TaskSectionKey.TODAY,
+    TaskSectionKey.THIS_WEEK,
+    TaskSectionKey.LATER,
+    TaskSectionKey.NO_DATE,
+    TaskSectionKey.DONE
+)
+
+private val STATUS_SECTIONS = listOf(
+    TaskSectionKey.IN_PROGRESS,
+    TaskSectionKey.REVISION,
+    TaskSectionKey.REVIEW,
+    TaskSectionKey.NOT_STARTED,
+    TaskSectionKey.DONE
+)
+
+private fun sectionOf(row: TaskListRow, today: LocalDate, mode: TaskGroupMode): TaskSectionKey =
+    if (mode == TaskGroupMode.BY_STATUS) statusSection(row.status) else dueDateSection(row, today)
+
+private fun statusSection(status: TaskStatus): TaskSectionKey = when (status) {
+    TaskStatus.IN_PROGRESS -> TaskSectionKey.IN_PROGRESS
+    TaskStatus.REVISION -> TaskSectionKey.REVISION
+    TaskStatus.REVIEW -> TaskSectionKey.REVIEW
+    TaskStatus.NOT_STARTED -> TaskSectionKey.NOT_STARTED
+    TaskStatus.DONE -> TaskSectionKey.DONE
+}
+
+private fun dueDateSection(row: TaskListRow, today: LocalDate): TaskSectionKey {
+    if (row.status == TaskStatus.DONE) return TaskSectionKey.DONE
+    val due = row.dueDate ?: return TaskSectionKey.NO_DATE
+    return when {
+        due.isBefore(today) -> TaskSectionKey.OVERDUE
+        due.isEqual(today) -> TaskSectionKey.TODAY
+        ChronoUnit.DAYS.between(today, due) <= 7 -> TaskSectionKey.THIS_WEEK
+        else -> TaskSectionKey.LATER
     }
 }
 
@@ -130,33 +185,10 @@ private val completedDesc = Comparator<TaskListRow> { a, b ->
 
 private val priorityDesc = Comparator<TaskListRow> { a, b -> b.priority.compareTo(a.priority) }
 
-private val subjectAsc = Comparator<TaskListRow> { a, b ->
-    val x = a.subject
-    val y = b.subject
-    if (x == null) {
-        if (y == null) 0 else 1
-    } else if (y == null) {
-        -1
-    } else {
-        x.compareTo(y, ignoreCase = true)
-    }
-}
+private val titleAsc = Comparator<TaskListRow> { a, b -> a.title.compareTo(b.title, ignoreCase = true) }
 
-private val statusAsc = Comparator<TaskListRow> { a, b -> a.status.code.compareTo(b.status.code) }
+/** Due date ascending (no due date last), then higher priority first, then title. */
+private val dueThenPriority: Comparator<TaskListRow> = dueDateAsc.then(priorityDesc).then(titleAsc)
 
-private val activeOrder: Comparator<TaskListRow> = dueDateAsc.then(priorityDesc)
-private val doneOrder: Comparator<TaskListRow> = completedDesc.then(dueDateAsc)
-
-private val dueDateOrder = Comparator<TaskListRow> { a, b ->
-    val aDone = a.status == TaskStatus.DONE
-    val bDone = b.status == TaskStatus.DONE
-    when {
-        aDone != bDone -> if (aDone) 1 else -1
-        aDone -> doneOrder.compare(a, b)
-        else -> activeOrder.compare(a, b)
-    }
-}
-
-private val priorityOrder: Comparator<TaskListRow> = priorityDesc.then(dueDateAsc)
-private val subjectOrder: Comparator<TaskListRow> = subjectAsc.then(dueDateAsc)
-private val statusOrder: Comparator<TaskListRow> = statusAsc.then(dueDateAsc)
+/** Newest completion first. */
+private val newestFirst: Comparator<TaskListRow> = completedDesc.then(dueDateAsc)

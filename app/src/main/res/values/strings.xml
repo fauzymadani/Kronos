@@ -28,6 +28,8 @@
     <string name="exam_subject">Subject</string>
     <string name="exam_date">Exam date</string>
     <string name="exam_time">Exam time (optional)</string>
+    <string name="exam_end_time">Exam end time (optional)</string>
+    <string name="clear">Clear</string>
     <string name="seat_number">Seat number</string>
     <string name="past_exams">Past exams</string>
     <string name="exam_deleted">Exam deleted</string>
@@ -50,6 +52,12 @@
     <string name="exam_day_description">%1$s, %2$s</string>
     <string name="exam_room">Room %1$s</string>
     <string name="exam_seat">Seat %1$s</string>
+    <string name="exam_next">Next</string>
+    <string name="exam_block_title">Exam · %1$s</string>
+    <string name="exam_starts_soon">Starting now</string>
+    <string name="exam_starts_minutes">Starts in %1$d min</string>
+    <string name="exam_starts_hour">Starts in 1 hour</string>
+    <string name="exam_starts_hours">Starts in %1$d hours</string>
     <plurals name="exam_count">
         <item quantity="one">%d exam</item>
         <item quantity="other">%d exams</item>
@@ -85,20 +93,22 @@
     <string name="assignment_individual">Individual</string>
     <string name="assignment_group">Group</string>
     <string name="tasks_summary">%1$d tasks · %2$d overdue · %3$d in progress · %4$d done</string>
-    <string name="due_today">Due today</string>
-    <string name="due_on">Due %1$s</string>
+    <string name="section_header">%1$s · %2$d</string>
+    <string name="no_due_date">No due date</string>
+    <string name="priority_label_high">High</string>
+    <string name="lead_no_date">—</string>
+    <string name="lead_done_date">%1$d %2$s</string>
     <string name="done_on">Done %1$s</string>
     <string name="completed_at">Completed %1$s, %2$s</string>
     <string name="task_marked_done">Task marked done</string>
-    <string name="sort_due_date">Sort: due date</string>
-    <string name="sort_priority">Sort: priority</string>
-    <string name="sort_subject">Sort: subject</string>
-    <string name="sort_status">Sort: status</string>
-    <plurals name="overdue_by_days">
-        <item quantity="one">Overdue by %d day</item>
-        <item quantity="other">Overdue by %d days</item>
+    <string name="nothing_to_do">Nothing to do. Nice.</string>
+    <string name="group_by">Group by</string>
+    <string name="show_done">Show done tasks</string>
+    <string name="hide_done">Hide done tasks</string>
+    <plurals name="days_late">
+        <item quantity="one">%d day late</item>
+        <item quantity="other">%d days late</item>
     </plurals>
-    <string name="sort_tasks">Sort tasks</string>
     <string name="task_deleted">Task deleted</string>
     <string name="undo">Undo</string>
     <string name="manage_categories">Manage categories</string>
@@ -117,6 +127,7 @@
     <string name="day_view">Day view</string>
     <string name="week_view">Week view</string>
     <string name="month_view">Month view</string>
+    <string name="show_exams">Show exams</string>
     <string name="period">Period</string>
     <string name="custom_times">Custom times</string>
     <string name="configure_periods">Configure periods</string>
@@ -166,6 +177,7 @@
     <string name="no_tasks_match_filter">No tasks match this filter</string>
     <string name="no_upcoming_exams">No upcoming exams</string>
     <string name="no_exams_yet">No exams yet</string>
+    <string name="no_exams_match_filter">No exams match this filter</string>
     <string name="no_exams_on_day">No exams on this day</string>
     <string name="no_categories_yet">No categories yet. Add one to organize your tasks.</string>
 </resources>

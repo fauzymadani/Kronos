@@ -1,7 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/group_by"
+        android:title="@string/group_by"
+        app:showAsAction="never">
+        <menu>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/group_due_date"
+                    android:title="@string/due_date"
+                    android:checked="true" />
+                <item
+                    android:id="@+id/group_status"
+                    android:title="@string/status_label" />
+            </group>
+        </menu>
+    </item>
     <item
         android:id="@+id/manage_categories"
         android:title="@string/manage_categories"
-        android:showAsAction="never" />
+        app:showAsAction="never" />
 </menu>

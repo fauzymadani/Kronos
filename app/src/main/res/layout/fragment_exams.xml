@@ -18,6 +18,13 @@
             android:orientation="vertical"
             android:paddingStart="12dp"
             android:paddingEnd="12dp">
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/filterChips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleLine="true"
+                app:singleSelection="true"/>
             <com.google.android.material.button.MaterialButtonToggleGroup
                 android:id="@+id/modeToggle"
                 android:layout_width="match_parent"
