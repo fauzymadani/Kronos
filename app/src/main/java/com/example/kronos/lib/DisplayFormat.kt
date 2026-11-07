@@ -1,5 +1,6 @@
 package com.example.kronos.lib
 
+import com.example.kronos.R
 import com.example.kronos.data.FirstDayOfWeek
 import com.example.kronos.data.TimeFormat
 import java.time.DayOfWeek
@@ -19,6 +20,23 @@ fun formatDisplayTime(value: LocalTime, format: TimeFormat): String =
 
 fun formatDisplayDate(value: LocalDate): String =
     value.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.getDefault()))
+
+/** Compact "Fri 14 Nov" form used by the task list. */
+fun formatShortDate(value: LocalDate): String =
+    value.format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.getDefault()))
+
+fun statusLabelRes(status: TaskStatus): Int = when (status) {
+    TaskStatus.NOT_STARTED -> R.string.status_not_started
+    TaskStatus.IN_PROGRESS -> R.string.status_in_progress
+    TaskStatus.REVIEW -> R.string.status_review
+    TaskStatus.REVISION -> R.string.status_revision
+    TaskStatus.DONE -> R.string.done
+}
+
+fun assignmentLabelRes(type: AssignmentType): Int = when (type) {
+    AssignmentType.INDIVIDUAL -> R.string.assignment_individual
+    AssignmentType.GROUP -> R.string.assignment_group
+}
 
 fun orderedIsoDays(firstDay: FirstDayOfWeek): List<Int> =
     if (firstDay == FirstDayOfWeek.MONDAY) (1..7).toList() else listOf(7, 1, 2, 3, 4, 5, 6)

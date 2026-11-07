@@ -5,6 +5,8 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.example.kronos.lib.AssignmentType
+import com.example.kronos.lib.TaskStatus
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -84,7 +86,10 @@ data class Task(
     val categoryId: Long? = null,
     val priority: Int = 0,
     val done: Boolean = false,
-    val reminderTime: LocalDateTime? = null
+    val reminderTime: LocalDateTime? = null,
+    @ColumnInfo(defaultValue = "0") val status: Int = TaskStatus.NOT_STARTED.code,
+    @ColumnInfo(defaultValue = "0") val assignmentType: Int = AssignmentType.INDIVIDUAL.code,
+    val completedAt: Long? = null
 )
 
 @Entity(

@@ -8,6 +8,7 @@ import com.example.kronos.data.local.Subject
 import com.example.kronos.data.local.Task
 import com.example.kronos.data.local.TaskWithSubject
 import com.example.kronos.data.local.Category
+import com.example.kronos.lib.TaskStatus
 import com.example.kronos.notifications.TaskExamReminderScheduler
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,14 +33,13 @@ class TaskViewModel(
     }
 
     fun save(task: Task) = viewModelScope.launch {
-        val saved = if (task.id == 0L) {
-            val id = repository.insert(task)
-            task.copy(id = id)
+        val id = if (task.id == 0L) {
+            repository.insert(task)
         } else {
             repository.update(task)
-            task
+            task.id
         }
-        reminderScheduler.saveTask(saved)
+        repository.find(id)?.let { reminderScheduler.saveTask(it) }
     }
     fun delete(task: Task) = viewModelScope.launch {
         repository.delete(task)
@@ -47,12 +47,13 @@ class TaskViewModel(
     }
     fun insert(task: Task) = viewModelScope.launch {
         val id = repository.insert(task)
-        reminderScheduler.saveTask(task.copy(id = id))
-    }
-    fun setDone(id: Long, done: Boolean) = viewModelScope.launch {
-        repository.setDone(id, done)
         repository.find(id)?.let { reminderScheduler.saveTask(it) }
     }
+    fun setStatus(id: Long, status: TaskStatus, nowMillis: Long = System.currentTimeMillis()) =
+        viewModelScope.launch {
+            repository.setStatus(id, status, nowMillis)
+            repository.find(id)?.let { reminderScheduler.saveTask(it) }
+        }
     suspend fun find(id: Long): Task? = repository.find(id)
     fun saveCategory(category: Category) = viewModelScope.launch { repository.saveCategory(category) }
     fun deleteCategory(category: Category) = viewModelScope.launch { repository.deleteCategory(category) }

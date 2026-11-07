@@ -16,4 +16,9 @@
     <color name="priority_high">#FFFF8A80</color>
     <color name="priority_medium">#FFFFB74D</color>
     <color name="priority_low">#FF81C784</color>
+    <color name="status_not_started">#FF9AA0A6</color>
+    <color name="status_in_progress">#FF6FA3FF</color>
+    <color name="status_review">#FFE0A93B</color>
+    <color name="status_revision">#FFF08A6C</color>
+    <color name="status_done">#FF5FBF86</color>
 </resources>

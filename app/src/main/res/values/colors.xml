@@ -17,6 +17,11 @@
     <color name="priority_high">#FFB00020</color>
     <color name="priority_medium">#FFFF9800</color>
     <color name="priority_low">#FF4CAF50</color>
+    <color name="status_not_started">#FF8A8F98</color>
+    <color name="status_in_progress">#FF2F6FDE</color>
+    <color name="status_review">#FFB7791F</color>
+    <color name="status_revision">#FFC2543A</color>
+    <color name="status_done">#FF2E7D4F</color>
     <color name="widget_light_background">#FFFFFBFE</color>
     <color name="widget_dark_background">#FF211F26</color>
     <color name="widget_light_secondary">#FF79747E</color>

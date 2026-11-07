@@ -20,6 +20,13 @@ import com.example.kronos.data.local.DatabaseProvider
 import com.example.kronos.data.local.Task
 import com.example.kronos.data.local.TaskWithSubject
 import com.example.kronos.databinding.FragmentTasksBinding
+import com.example.kronos.lib.AssignmentType
+import com.example.kronos.lib.TaskFilter
+import com.example.kronos.lib.TaskListRow
+import com.example.kronos.lib.TaskSort
+import com.example.kronos.lib.TaskStatus
+import com.example.kronos.lib.TaskSummary
+import com.example.kronos.lib.summarize
 import com.example.kronos.notifications.TaskExamReminderScheduler
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -39,11 +46,11 @@ class TasksFragment : Fragment() {
             TaskExamReminderScheduler(requireContext())
         )
     }
-    private val adapter = TaskAdapter(::editTask) { task, done ->
-        viewModel.setDone(task.id, done)
+    private val adapter = TaskAdapter(::editTask) { task, status ->
+        viewModel.setStatus(task.id, status)
     }
-    private var filter = Filter.ALL
-    private var sort = Sort.DUE_DATE
+    private var filter = TaskFilter.ALL
+    private var sort = TaskSort.DUE_DATE
     private var taskEditor: TaskEditorBottomSheet? = null
     private var categoriesDialog: AlertDialog? = null
     private var categoriesContainer: android.widget.LinearLayout? = null
@@ -104,11 +111,14 @@ class TasksFragment : Fragment() {
 
     private fun setupFilters() {
         listOf(
-            Filter.ALL to R.string.all,
-            Filter.TODAY to R.string.today,
-            Filter.UPCOMING to R.string.upcoming,
-            Filter.OVERDUE to R.string.overdue,
-            Filter.DONE to R.string.done
+            TaskFilter.ALL to R.string.all,
+            TaskFilter.ACTIVE to R.string.filter_active,
+            TaskFilter.OVERDUE to R.string.overdue,
+            TaskFilter.NOT_STARTED to R.string.status_not_started,
+            TaskFilter.IN_PROGRESS to R.string.status_in_progress,
+            TaskFilter.REVIEW to R.string.status_review,
+            TaskFilter.REVISION to R.string.status_revision,
+            TaskFilter.DONE to R.string.done
         ).forEach { (value, label) ->
             val chip = Chip(requireContext()).apply {
                 id = View.generateViewId()
@@ -120,19 +130,21 @@ class TasksFragment : Fragment() {
                 }
             }
             binding.filterChips.addView(chip)
-            if (value == Filter.ALL) chip.isChecked = true
+            if (value == filter) chip.isChecked = true
         }
         binding.sortButton.setOnClickListener {
             sort = when (sort) {
-                Sort.DUE_DATE -> Sort.PRIORITY
-                Sort.PRIORITY -> Sort.SUBJECT
-                Sort.SUBJECT -> Sort.DUE_DATE
+                TaskSort.DUE_DATE -> TaskSort.PRIORITY
+                TaskSort.PRIORITY -> TaskSort.SUBJECT
+                TaskSort.SUBJECT -> TaskSort.STATUS
+                TaskSort.STATUS -> TaskSort.DUE_DATE
             }
             binding.sortButton.setText(
                 when (sort) {
-                    Sort.DUE_DATE -> R.string.sort_due_date
-                    Sort.PRIORITY -> R.string.sort_priority
-                    Sort.SUBJECT -> R.string.sort_subject
+                    TaskSort.DUE_DATE -> R.string.sort_due_date
+                    TaskSort.PRIORITY -> R.string.sort_priority
+                    TaskSort.SUBJECT -> R.string.sort_subject
+                    TaskSort.STATUS -> R.string.sort_status
                 }
             )
             submitFiltered(viewModel.tasks.value)
@@ -154,53 +166,74 @@ class TasksFragment : Fragment() {
                 if (position == RecyclerView.NO_POSITION) return
                 val item = adapter.currentList[position]
                 if (direction == ItemTouchHelper.RIGHT) {
-                    viewModel.setDone(item.id, true)
+                    markDone(position, item)
                 } else {
-                    val task = item.toTask()
-                    viewModel.delete(task)
-                    Snackbar.make(binding.root, R.string.task_deleted, Snackbar.LENGTH_LONG)
-                        .setAction(R.string.undo) { viewModel.insert(task) }
-                        .show()
+                    deleteTask(item)
                 }
             }
         }).attachToRecyclerView(binding.taskList)
     }
 
+    private fun markDone(position: Int, item: TaskWithSubject) {
+        if (TaskStatus.fromCode(item.status) == TaskStatus.DONE) {
+            adapter.notifyItemChanged(position)
+            return
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            val previous = viewModel.find(item.id) ?: return@launch
+            viewModel.setStatus(item.id, TaskStatus.DONE)
+            Snackbar.make(binding.root, R.string.task_marked_done, Snackbar.LENGTH_LONG)
+                .setAction(R.string.undo) { viewModel.save(previous) }
+                .show()
+        }
+    }
+
+    private fun deleteTask(item: TaskWithSubject) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val task = viewModel.find(item.id) ?: return@launch
+            viewModel.delete(task)
+            Snackbar.make(binding.root, R.string.task_deleted, Snackbar.LENGTH_LONG)
+                .setAction(R.string.undo) { viewModel.insert(task) }
+                .show()
+        }
+    }
+
     private fun submitFiltered(source: List<TaskWithSubject>) {
         val today = LocalDate.now()
-        val filtered = source.asSequence()
-            .filter {
-                val date = it.dueDate?.let(LocalDate::parse)
-                when (filter) {
-                    Filter.ALL -> true
-                    Filter.TODAY -> date == today
-                    Filter.UPCOMING -> !it.done && (date == null || !date.isBefore(today))
-                    Filter.OVERDUE -> !it.done && date?.isBefore(today) == true
-                    Filter.DONE -> it.done
-                }
-            }
-            .sortedWith(
-                when (sort) {
-                    Sort.DUE_DATE -> Comparator { a, b -> compareNullable(a.dueDate, b.dueDate) }
-                    Sort.PRIORITY -> compareByDescending<TaskWithSubject> { it.priority }
-                    Sort.SUBJECT -> Comparator { a, b -> compareNullable(a.subjectName, b.subjectName) }
-                }
-            )
-            .toList()
+        val rows = source.map { it.toRow() }
+        renderSummary(summarize(rows, today))
+        val comparator = sort.comparator()
+        val filtered = rows.indices
+            .filter { filter.matches(rows[it], today) }
+            .sortedWith(Comparator { first, second -> comparator.compare(rows[first], rows[second]) })
+            .map { source[it] }
         adapter.submitList(filtered)
-        binding.taskList.visibility = if (filtered.isEmpty()) View.GONE else View.VISIBLE
-        binding.emptyState.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
-        binding.emptyStateSubtitle.text = getString(
-            if (source.isEmpty()) R.string.no_tasks_yet_subtitle else R.string.no_matching_tasks_subtitle
+        val empty = filtered.isEmpty()
+        binding.taskList.visibility = if (empty) View.GONE else View.VISIBLE
+        binding.emptyState.visibility = if (empty) View.VISIBLE else View.GONE
+        binding.emptyState.setText(
+            if (filter == TaskFilter.ALL) R.string.no_tasks_yet
+            else R.string.no_tasks_match_filter
         )
     }
 
-    private fun compareNullable(first: String?, second: String?): Int = when {
-        first == null && second == null -> 0
-        first == null -> 1
-        second == null -> -1
-        else -> first.compareTo(second)
+    private fun renderSummary(summary: TaskSummary) {
+        binding.summary.text = getString(
+            R.string.tasks_summary,
+            summary.total,
+            summary.overdue,
+            summary.count(TaskStatus.IN_PROGRESS),
+            summary.count(TaskStatus.DONE)
+        )
     }
+
+    private fun TaskWithSubject.toRow() = TaskListRow(
+        dueDate = dueDate?.let(LocalDate::parse),
+        status = TaskStatus.fromCode(status),
+        priority = priority,
+        subject = subjectName,
+        completedAt = completedAt
+    )
 
     private fun editTask(item: TaskWithSubject) {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -227,6 +260,11 @@ class TasksFragment : Fragment() {
         val time = result.getString(TaskEditorBottomSheet.RESULT_TIME)?.let(LocalTime::parse)
         val reminder = result.getString(TaskEditorBottomSheet.RESULT_REMINDER)
             ?.let(java.time.LocalDateTime::parse)
+        val status = TaskStatus.fromCode(
+            result.getInt(TaskEditorBottomSheet.RESULT_STATUS, TaskStatus.NOT_STARTED.code)
+        )
+        val completedAt = result.getLong(TaskEditorBottomSheet.RESULT_COMPLETED_AT, -1L)
+            .takeIf { it >= 0L }
         viewModel.save(
             Task(
                 id = id,
@@ -239,8 +277,14 @@ class TasksFragment : Fragment() {
                 categoryId = result.getLong(TaskEditorBottomSheet.RESULT_CATEGORY_ID)
                     .takeIf { it != 0L },
                 priority = result.getInt(TaskEditorBottomSheet.RESULT_PRIORITY),
-                done = result.getBoolean(TaskEditorBottomSheet.RESULT_DONE),
-                reminderTime = reminder
+                done = status == TaskStatus.DONE,
+                reminderTime = reminder,
+                status = status.code,
+                assignmentType = result.getInt(
+                    TaskEditorBottomSheet.RESULT_ASSIGNMENT_TYPE,
+                    AssignmentType.INDIVIDUAL.code
+                ),
+                completedAt = completedAt
             )
         )
     }
@@ -411,18 +455,6 @@ class TasksFragment : Fragment() {
         shown.show()
     }
 
-    private fun TaskWithSubject.toTask() = Task(
-        id = id,
-        title = title,
-        notes = notes,
-        dueDate = dueDate?.let(LocalDate::parse),
-        dueTime = dueTime?.let(LocalTime::parse),
-        subjectId = subjectId,
-        categoryId = categoryId,
-        priority = priority,
-        done = done
-    )
-
     override fun onDestroyView() {
         binding.taskList.adapter = null
         taskEditor = null
@@ -431,7 +463,4 @@ class TasksFragment : Fragment() {
         _binding = null
         super.onDestroyView()
     }
-
-    private enum class Filter { ALL, TODAY, UPCOMING, OVERDUE, DONE }
-    private enum class Sort { DUE_DATE, PRIORITY, SUBJECT }
 }

@@ -6,6 +6,8 @@ import com.example.kronos.data.local.Exam
 import com.example.kronos.data.local.Holiday
 import com.example.kronos.data.local.Subject
 import com.example.kronos.data.local.Task
+import com.example.kronos.lib.AssignmentType
+import com.example.kronos.lib.TaskStatus
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -40,8 +42,8 @@ data class BackupData(
 )
 
 object BackupJsonCodec {
-    const val FORMAT_VERSION = 1
-    const val DATABASE_SCHEMA_VERSION = 8
+    const val FORMAT_VERSION = 2
+    const val DATABASE_SCHEMA_VERSION = 9
 
     fun encode(data: BackupData): String = JSONObject().apply {
         put("formatVersion", FORMAT_VERSION)
@@ -64,6 +66,8 @@ object BackupJsonCodec {
             putNullable("dueDate", it.dueDate); putNullable("dueTime", it.dueTime)
             putNullable("subjectId", it.subjectId); putNullable("categoryId", it.categoryId)
             put("priority", it.priority); put("done", it.done); putNullable("reminderTime", it.reminderTime)
+            put("status", it.status); put("assignmentType", it.assignmentType)
+            putNullable("completedAt", it.completedAt)
         } }))
         put("exams", JSONArray(data.exams.map { JSONObject().apply {
             put("id", it.id); put("title", it.title); putNullable("subjectId", it.subjectId)
@@ -126,12 +130,20 @@ object BackupJsonCodec {
         o.stringOrNull("room"), o.stringOrNull("teacher"), o.requiredInt("weekNumber"),
         o.stringOrNull("notes"), o.requiredBoolean("reminderEnabled"), o.intOrNull("reminderOffsetMinutes")
     )
-    private fun task(o: JSONObject) = Task(
-        o.requiredLong("id"), o.requiredString("title"), o.stringOrNull("notes"),
-        o.dateOrNull("dueDate"), o.timeOrNull("dueTime"), o.longOrNull("subjectId"),
-        o.longOrNull("categoryId"), o.requiredInt("priority"), o.requiredBoolean("done"),
-        o.dateTimeOrNull("reminderTime")
-    )
+    private fun task(o: JSONObject): Task {
+        // Older backups have no status/assignmentType/completedAt: derive them from done.
+        val status = o.intOrNull("status")?.let { TaskStatus.fromCode(it) }
+            ?: if (o.requiredBoolean("done")) TaskStatus.DONE else TaskStatus.NOT_STARTED
+        val assignmentType = o.intOrNull("assignmentType")?.let { AssignmentType.fromCode(it) }
+            ?: AssignmentType.INDIVIDUAL
+        return Task(
+            o.requiredLong("id"), o.requiredString("title"), o.stringOrNull("notes"),
+            o.dateOrNull("dueDate"), o.timeOrNull("dueTime"), o.longOrNull("subjectId"),
+            o.longOrNull("categoryId"), o.requiredInt("priority"), status == TaskStatus.DONE,
+            o.dateTimeOrNull("reminderTime"), status.code, assignmentType.code,
+            o.longOrNull("completedAt")
+        )
+    }
     private fun exam(o: JSONObject) = Exam(
         o.requiredLong("id"), o.requiredString("title"), o.longOrNull("subjectId"),
         LocalDate.parse(o.requiredString("date")), o.timeOrNull("startTime"),

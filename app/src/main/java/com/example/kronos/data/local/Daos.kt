@@ -118,7 +118,10 @@ data class TaskWithSubject(
     val categoryName: String?,
     val categoryColor: String?,
     val priority: Int,
-    val done: Boolean
+    val done: Boolean,
+    val status: Int,
+    val assignmentType: Int,
+    val completedAt: Long?
 )
 
 @Dao
@@ -127,7 +130,8 @@ interface TaskDao {
         """
         SELECT t.id, t.title, t.notes, t.dueDate, t.dueTime, t.subjectId,
                s.name AS subjectName, t.categoryId, c.name AS categoryName,
-               c.color AS categoryColor, t.priority, t.done
+               c.color AS categoryColor, t.priority, t.done, t.status,
+               t.assignmentType, t.completedAt
         FROM tasks t
         LEFT JOIN subjects s ON s.id = t.subjectId
         LEFT JOIN categories c ON c.id = t.categoryId
@@ -153,8 +157,8 @@ interface TaskDao {
     @Delete
     suspend fun delete(task: Task)
 
-    @Query("UPDATE tasks SET done = :done WHERE id = :id")
-    suspend fun setDone(id: Long, done: Boolean)
+    @Query("UPDATE tasks SET status = :status, done = :done, completedAt = :completedAt WHERE id = :id")
+    suspend fun setStatus(id: Long, status: Int, done: Boolean, completedAt: Long?)
 }
 
 @Dao
