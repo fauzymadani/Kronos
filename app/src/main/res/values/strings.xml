@@ -32,9 +32,28 @@
     <string name="past_exams">Past exams</string>
     <string name="exam_deleted">Exam deleted</string>
     <string name="delete_exam_confirm">Delete this exam?</string>
-    <string name="in_days">in %1$d days</string>
-    <string name="in_one_day">tomorrow</string>
-    <string name="today_countdown">today</string>
+    <string name="exam_mode_calendar">Calendar</string>
+    <string name="exam_mode_list">List</string>
+    <string name="next_exam_label">Next: %1$s</string>
+    <string name="next_exam_summary">%1$s · %2$s</string>
+    <string name="date_with_time">%1$s %2$s</string>
+    <string name="this_week">This week</string>
+    <string name="later">Later</string>
+    <string name="past_section">Past (%1$d)</string>
+    <string name="countdown_days_unit">days</string>
+    <string name="countdown_in_days">in %1$d days</string>
+    <string name="countdown_tomorrow">Tomorrow</string>
+    <string name="countdown_past">Past</string>
+    <string name="previous_month">Previous month</string>
+    <string name="next_month">Next month</string>
+    <string name="exam_day_no_exams">no exams</string>
+    <string name="exam_day_description">%1$s, %2$s</string>
+    <string name="exam_room">Room %1$s</string>
+    <string name="exam_seat">Seat %1$s</string>
+    <plurals name="exam_count">
+        <item quantity="one">%d exam</item>
+        <item quantity="other">%d exams</item>
+    </plurals>
     <string name="holidays">Holidays and breaks</string>
     <string name="add_holiday">Add holiday or break</string>
     <string name="holiday_name">Name</string>
@@ -128,6 +147,7 @@
     <string name="no_tasks_yet_subtitle">Your tasks will appear here. Tap Add task to create your first one.</string>
     <string name="no_matching_tasks_subtitle">There are no tasks matching this filter.</string>
     <string name="no_upcoming_exams">No upcoming exams</string>
-    <string name="no_upcoming_exams_subtitle">Your upcoming exams will appear here. Tap Add exam to plan one.</string>
+    <string name="no_exams_yet">No exams yet</string>
+    <string name="no_exams_on_day">No exams on this day</string>
     <string name="no_categories_yet">No categories yet. Add one to organize your tasks.</string>
 </resources>

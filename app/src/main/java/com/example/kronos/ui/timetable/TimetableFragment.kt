@@ -69,7 +69,7 @@ class TimetableFragment : Fragment() {
     private var monthExams: List<ExamWithSubject> = emptyList()
     private var holidays: List<Holiday> = emptyList()
     private var daySessions: List<ClassSessionWithSubject> = emptyList()
-    private val examAdapter = ExamAdapter {}
+    private val examAdapter = ExamAdapter(onClick = {})
     private val reminderScheduler get() = ClassReminderScheduler(requireContext())
     private val createBackup = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -326,7 +326,10 @@ class TimetableFragment : Fragment() {
             adapter.submitList(monthSessions.filter {
                 it.dayOfWeek == selectedMonthDay.dayOfWeek.value
             }.takeUnless { isHoliday(selectedMonthDay) } ?: emptyList())
-            examAdapter.submitList(monthExams.filter { it.date == selectedMonthDay.toString() })
+            examAdapter.submitExams(
+                monthExams.filter { it.date == selectedMonthDay.toString() },
+                LocalDate.now()
+            )
         }
     }
 
