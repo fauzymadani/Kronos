@@ -7,10 +7,23 @@ import kotlin.test.assertTrue
 
 class DayTimelineLayoutTest {
     @Test
-    fun singleClassGetsOneColumnAndOneHourMargins() {
+    fun axisAlwaysCoversTheFullDay() {
+        val layout = calculateDayTimelineLayout(listOf(session(13, 14)))
+        assertEquals(0, layout.firstMinute)
+        assertEquals(24 * 60, layout.lastMinute)
+        assertEquals(24 * 60, layout.durationMinutes)
+    }
+
+    @Test
+    fun emptyDayStillCoversTheFullDay() {
+        val layout = calculateDayTimelineLayout(emptyList())
+        assertEquals(24 * 60, layout.durationMinutes)
+        assertTrue(layout.blocks.isEmpty())
+    }
+
+    @Test
+    fun singleClassGetsOneColumn() {
         val layout = calculateDayTimelineLayout(listOf(session(9, 10)))
-        assertEquals(8 * 60, layout.firstMinute)
-        assertEquals(18 * 60, layout.lastMinute)
         assertEquals(0, layout.blocks.single().column)
         assertEquals(1, layout.blocks.single().columnCount)
     }
@@ -37,17 +50,51 @@ class DayTimelineLayoutTest {
     }
 
     @Test
-    fun shortClassKeepsItsDurationAndRange() {
+    fun shortClassKeepsItsDuration() {
         val block = calculateDayTimelineLayout(listOf(session(9, 9, 15))).blocks.single()
         assertEquals(15, block.endMinute - block.startMinute)
     }
 
     @Test
-    fun overnightClassExtendsPastMidnightWithoutClipping() {
-        val layout = calculateDayTimelineLayout(listOf(session(23, 1)))
-        assertEquals(23 * 60, layout.blocks.single().startMinute)
-        assertEquals(25 * 60, layout.blocks.single().endMinute)
-        assertTrue(layout.lastMinute >= 26 * 60)
+    fun overnightClassKeepsItsDurationPastMidnight() {
+        val block = calculateDayTimelineLayout(listOf(session(23, 1))).blocks.single()
+        assertEquals(23 * 60, block.startMinute)
+        assertEquals(25 * 60, block.endMinute)
+    }
+
+    @Test
+    fun noClassesAndNotTodayScrollsToSevenAm() {
+        assertEquals(420, initialScrollMinutes(emptyList(), isToday = false, nowMinutes = 0))
+    }
+
+    @Test
+    fun singleClassAtThirteenScrollsOneHourEarlier() {
+        assertEquals(
+            12 * 60,
+            initialScrollMinutes(listOf(13 * 60), isToday = false, nowMinutes = 0)
+        )
+    }
+
+    @Test
+    fun earlyClassClampsToMidnight() {
+        assertEquals(0, initialScrollMinutes(listOf(30), isToday = false, nowMinutes = 0))
+    }
+
+    @Test
+    fun lateClassKeepsScrollInsideTheDay() {
+        assertEquals(
+            22 * 60,
+            initialScrollMinutes(listOf(23 * 60), isToday = false, nowMinutes = 0)
+        )
+    }
+
+    @Test
+    fun todayFollowsTheCurrentTime() {
+        assertEquals(
+            13 * 60 + 20,
+            initialScrollMinutes(emptyList(), isToday = true, nowMinutes = 14 * 60 + 20)
+        )
+        assertEquals(0, initialScrollMinutes(listOf(8 * 60), isToday = true, nowMinutes = 20))
     }
 
     private fun session(startHour: Int, endHour: Int, endMinute: Int = 0) =

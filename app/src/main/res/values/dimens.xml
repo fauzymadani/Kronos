@@ -4,4 +4,5 @@
     <dimen name="widget_row_height">44dp</dimen>
     <dimen name="widget_time_width">58dp</dimen>
     <dimen name="widget_subject_gap">8dp</dimen>
+    <dimen name="hour_height">56dp</dimen>
 </resources>

@@ -45,7 +45,8 @@
             <com.example.kronos.ui.timetable.DayTimelineView
                 android:id="@+id/dayTimeline"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:background="?attr/colorSurface" />
         </android.widget.ScrollView>
 
         <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton

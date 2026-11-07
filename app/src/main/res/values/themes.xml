@@ -14,6 +14,8 @@
         <item name="android:navigationBarColor">@color/background</item>
     </style>
 
+    <style name="TextAppearance.Kronos.SectionTitle" parent="TextAppearance.Material3.TitleMedium" />
+
     <style name="Theme.Kronos" parent="Base.Theme.Kronos" />
     <style name="Theme.Kronos.Amoled" parent="Base.Theme.Kronos">
         <item name="colorSurface">@color/amoled_surface</item>

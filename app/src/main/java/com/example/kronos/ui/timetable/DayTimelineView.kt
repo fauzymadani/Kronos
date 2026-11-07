@@ -2,22 +2,26 @@ package com.example.kronos.ui.timetable
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import android.widget.ScrollView
 import com.example.kronos.R
 import com.example.kronos.data.local.ClassSessionWithSubject
 import com.example.kronos.data.SettingsStore
-import com.example.kronos.lib.DayTimelineLayout
 import com.example.kronos.lib.calculateDayTimelineLayout
 import com.example.kronos.lib.contrastingTextColor
+import com.example.kronos.lib.initialScrollMinutes
 import com.example.kronos.lib.parseUserColor
 import com.example.kronos.lib.formatDisplayTime
 import java.time.LocalDate
 import java.time.LocalTime
+import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.math.max
 
 class DayTimelineView @JvmOverloads constructor(
@@ -28,6 +32,8 @@ class DayTimelineView @JvmOverloads constructor(
 
     private var day = LocalDate.now()
     private var layout = calculateDayTimelineLayout(emptyList())
+    private var pendingScrollMinute = -1
+    private var scrolledDay: LocalDate? = null
     private val rects = ArrayList<RectF>(24)
     private val blocks = ArrayList<ClassSessionWithSubject>(24)
     private val blockText = ArrayList<String>(24)
@@ -39,137 +45,147 @@ class DayTimelineView @JvmOverloads constructor(
     private var timeFormat = SettingsStore(context).timeFormat
 
     private val density = resources.displayMetrics.density
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val clipBounds = Rect()
+    private var downX = 0f
+    private var downY = 0f
     private val timeWidth = dp(58f)
     private val horizontalPadding = dp(8f)
-    private val hourHeight = dp(64f)
+    private val hourHeight = resources.getDimension(R.dimen.hour_height)
     private val minuteHeight = hourHeight / 60f
     private val blockGap = dp(3f)
     private val cornerRadius = dp(6f)
-    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val halfLinePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val lineColor = context.getColor(R.color.grid_line)
+    private val textColor = context.getColor(R.color.on_surface_variant)
+    private val strongTextColor = context.getColor(R.color.on_surface)
+    private val accentColor = context.getColor(R.color.primary)
+
+    private val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = lineColor
+        strokeWidth = dp(1f)
+    }
+    private val halfLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = lineColor
+        strokeWidth = dp(1f)
+        alpha = 0x66
+    }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = dp(12f)
         typeface = android.graphics.Typeface.DEFAULT
+        color = textColor
     }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = dp(12f)
         typeface = android.graphics.Typeface.DEFAULT
+        color = textColor
     }
     private val boldTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = dp(12f)
         typeface = android.graphics.Typeface.DEFAULT_BOLD
+        color = strongTextColor
     }
     private val blockPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val currentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.primary)
+        color = accentColor
         strokeWidth = dp(2f)
     }
     private val currentDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = context.getColor(R.color.primary)
+        color = accentColor
     }
-    private val primaryColor = resolveColor(com.google.android.material.R.attr.colorPrimary)
-
-    init {
-        refreshThemeColors()
-    }
+    private val primaryColor = accentColor
 
     fun setDay(value: LocalDate, sessions: List<ClassSessionWithSubject>) {
-        refreshThemeColors()
+        timeFormat = SettingsStore(context).timeFormat
         day = value
         layout = calculateDayTimelineLayout(sessions)
-        currentLineMinute = if (day == LocalDate.now()) {
-            val now = LocalTime.now()
-            now.hour * 60 + now.minute
-        } else -1
+        val now = LocalTime.now()
+        val nowMinutes = now.hour * 60 + now.minute
+        val isToday = day == LocalDate.now()
+        currentLineMinute = if (isToday) nowMinutes else -1
+        if (value != scrolledDay) {
+            scrolledDay = value
+            pendingScrollMinute = initialScrollMinutes(
+                sessions.map { LocalTime.parse(it.startTime).toSecondOfDay() / 60 },
+                isToday,
+                nowMinutes
+            )
+        }
         rebuildRenderData()
         requestLayout()
         invalidate()
+        post { applyPendingScroll() }
     }
 
-    private fun refreshThemeColors() {
-        setBackgroundColor(resolveColor(com.google.android.material.R.attr.colorSurface))
-        linePaint.color = resolveColor(com.google.android.material.R.attr.colorOutline)
-        linePaint.strokeWidth = dp(1f)
-        halfLinePaint.color = resolveColor(com.google.android.material.R.attr.colorOutlineVariant)
-        halfLinePaint.strokeWidth = dp(1f)
-        textPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
-        labelPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant)
-        boldTextPaint.color = resolveColor(com.google.android.material.R.attr.colorOnSurface)
-        currentPaint.color = resolveColor(com.google.android.material.R.attr.colorPrimary)
-        currentDotPaint.color = currentPaint.color
-        timeFormat = SettingsStore(context).timeFormat
+    private fun yForMinute(minute: Int): Int =
+        (minute * minuteHeight).toInt().coerceAtLeast(0)
+
+    private fun applyPendingScroll() {
+        if (pendingScrollMinute < 0 || height == 0) return
+        val target = yForMinute(pendingScrollMinute)
+        pendingScrollMinute = -1
+        (parent as? ScrollView)?.scrollTo(0, target)
     }
-
-    fun minuteForScroll(): Int =
-        if (currentLineMinute >= layout.firstMinute && currentLineMinute <= layout.lastMinute) {
-            currentLineMinute
-        } else {
-            layout.blocks.firstOrNull()?.startMinute ?: layout.firstMinute
-        }
-
-    fun yForMinute(minute: Int): Int =
-        ((minute - layout.firstMinute) * minuteHeight).toInt().coerceAtLeast(0)
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val desiredHeight = (layout.durationMinutes * minuteHeight).toInt() + dp(8f).toInt()
-        val height = when (MeasureSpec.getMode(heightMeasureSpec)) {
-            MeasureSpec.UNSPECIFIED -> desiredHeight
-            else -> max(desiredHeight, MeasureSpec.getSize(heightMeasureSpec))
-        }
+        val fullDayHeight = (layout.durationMinutes * minuteHeight).toInt()
         setMeasuredDimension(
             MeasureSpec.getSize(widthMeasureSpec),
-            height
+            resolveSize(fullDayHeight, heightMeasureSpec)
         )
     }
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
         rebuildRenderData()
+        applyPendingScroll()
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val gridLeft = timeWidth + horizontalPadding
         val gridRight = width - horizontalPadding
-        var hour = (layout.firstMinute / 60) * 60
-        while (hour <= layout.lastMinute) {
-            val y = yForMinute(hour).toFloat()
+        val hours = layout.lastMinute / 60
+        canvas.getClipBounds(clipBounds)
+        val firstHour = (clipBounds.top / hourHeight).toInt().coerceIn(0, hours)
+        val lastHour = ceil(clipBounds.bottom / hourHeight).toInt().coerceIn(0, hours)
+        var hour = firstHour
+        while (hour <= lastHour) {
+            val y = hour * hourHeight
             canvas.drawLine(gridLeft, y, gridRight, y, linePaint)
-            val labelIndex = (hour - ((layout.firstMinute / 60) * 60)) / 60
-            if (labelIndex in labelText.indices) {
-                drawTimeLabel(canvas, labelText[labelIndex], y)
+            if (hour < labelText.size) {
+                drawTimeLabel(canvas, labelText[hour], y)
             }
-            val half = hour + 30
-            if (half < layout.lastMinute) {
-                val halfY = yForMinute(half).toFloat()
+            if (hour < hours) {
+                val halfY = y + hourHeight / 2f
                 canvas.drawLine(gridLeft, halfY, gridRight, halfY, halfLinePaint)
             }
-            hour += 60
+            hour++
         }
 
         var index = 0
-        while (index < layout.blocks.size) {
-            val block = layout.blocks[index]
+        while (index < rects.size) {
             val rect = rects[index]
-            blockPaint.color = blockColors[index]
-            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, blockPaint)
-            boldTextPaint.color = textColors[index]
-            textPaint.color = textColors[index]
-            textPaint.textAlign = Paint.Align.LEFT
-            canvas.save()
-            canvas.clipRect(rect)
-            val textLeft = rect.left + dp(6f)
-            val textRight = rect.right - dp(6f)
-            val baseline = rect.top + dp(16f)
-            canvas.drawText(blockText[index], textLeft, baseline, boldTextPaint)
-            if (roomText[index].isNotEmpty() && block.endMinute - block.startMinute >= 30) {
-                canvas.drawText(roomText[index], textLeft, baseline + dp(16f), textPaint)
+            if (rect.bottom >= clipBounds.top && rect.top <= clipBounds.bottom) {
+                val block = layout.blocks[index]
+                blockPaint.color = blockColors[index]
+                boldTextPaint.color = textColors[index]
+                textPaint.color = textColors[index]
+                textPaint.textAlign = Paint.Align.LEFT
+                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, blockPaint)
+                canvas.save()
+                canvas.clipRect(rect)
+                val textLeft = rect.left + dp(6f)
+                val baseline = rect.top + dp(16f)
+                canvas.drawText(blockText[index], textLeft, baseline, boldTextPaint)
+                if (roomText[index].isNotEmpty() && block.endMinute - block.startMinute >= 30) {
+                    canvas.drawText(roomText[index], textLeft, baseline + dp(16f), textPaint)
+                }
+                canvas.restore()
             }
-            canvas.restore()
             index++
         }
 
-        if (currentLineMinute >= layout.firstMinute && currentLineMinute <= layout.lastMinute) {
-            val y = yForMinute(currentLineMinute).toFloat()
+        if (currentLineMinute >= 0) {
+            val y = currentLineMinute * minuteHeight
             canvas.drawLine(gridLeft, y, gridRight, y, currentPaint)
             canvas.drawCircle(gridLeft, y, dp(4f), currentDotPaint)
         }
@@ -178,26 +194,28 @@ class DayTimelineView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                parent?.requestDisallowInterceptTouchEvent(true)
-                return true
-            }
-            MotionEvent.ACTION_MOVE -> {
-                parent?.requestDisallowInterceptTouchEvent(false)
-                return true
+                downX = event.x
+                downY = event.y
             }
             MotionEvent.ACTION_UP -> {
-                parent?.requestDisallowInterceptTouchEvent(false)
-            var index = rects.size - 1
-            while (index >= 0) {
-                if (rects[index].contains(event.x, event.y)) {
-                    onClassClick?.invoke(blocks[index])
-                    return true
+                if (abs(event.x - downX) <= touchSlop && abs(event.y - downY) <= touchSlop) {
+                    performClick()
+                    var index = rects.size - 1
+                    while (index >= 0) {
+                        if (rects[index].contains(event.x, event.y)) {
+                            onClassClick?.invoke(blocks[index])
+                            break
+                        }
+                        index--
+                    }
                 }
-                index--
             }
-            }
-            MotionEvent.ACTION_CANCEL -> parent?.requestDisallowInterceptTouchEvent(false)
         }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
         return true
     }
 
@@ -235,36 +253,17 @@ class DayTimelineView @JvmOverloads constructor(
             textColors += contrastingTextColor(color)
             index++
         }
-        var hour = (layout.firstMinute / 60) * 60
-        while (hour <= layout.lastMinute) {
-            labelText += formatDisplayTime(
-                LocalTime.of((hour / 60) % 24, hour % 60),
-                timeFormat
-            )
-            hour += 60
+        val hours = layout.lastMinute / 60
+        var hour = 0
+        while (hour <= hours) {
+            labelText += formatDisplayTime(LocalTime.of(hour % 24, 0), timeFormat)
+            hour++
         }
     }
 
     private fun drawTimeLabel(canvas: Canvas, label: String, y: Float) {
         labelPaint.textAlign = Paint.Align.RIGHT
         canvas.drawText(label, timeWidth, y + dp(4f), labelPaint)
-    }
-
-    private fun drawFittedText(
-        canvas: Canvas,
-        value: String,
-        left: Float,
-        right: Float,
-        baseline: Float,
-        paint: Paint
-    ) {
-        val maxWidth = right - left
-        if (maxWidth <= 0f) return
-        var text = value
-        while (text.length > 1 && paint.measureText(text) > maxWidth) {
-            text = text.dropLast(2) + "\u2026"
-        }
-        canvas.drawText(text, left, baseline, paint)
     }
 
     private fun fitText(value: String, maxWidth: Float, paint: Paint): String {
@@ -274,17 +273,6 @@ class DayTimelineView @JvmOverloads constructor(
             text = text.dropLast(2) + "\u2026"
         }
         return text
-    }
-
-    private fun formatMinute(minute: Int): String {
-        val normalized = ((minute % (24 * 60)) + 24 * 60) % (24 * 60)
-        return "%02d:%02d".format(normalized / 60, normalized % 60)
-    }
-
-    private fun resolveColor(attribute: Int): Int {
-        val value = android.util.TypedValue()
-        context.theme.resolveAttribute(attribute, value, true)
-        return if (value.resourceId != 0) context.getColor(value.resourceId) else value.data
     }
 
     private fun dp(value: Float): Float = value * density

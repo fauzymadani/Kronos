@@ -356,13 +356,6 @@ class TimetableFragment : Fragment() {
         binding.weekGrid.setHolidays(holidayDates)
         if (binding.dayTimelineContainer.visibility == View.VISIBLE) {
             binding.dayTimeline.setDay(dayDate, if (holiday != null) emptyList() else daySessions)
-            binding.dayTimelineScroll.post {
-                binding.dayTimelineScroll.scrollTo(
-                    0,
-                    binding.dayTimeline.yForMinute(binding.dayTimeline.minuteForScroll()) -
-                        binding.dayTimelineScroll.height / 4
-                )
-            }
             binding.toolbar.title = "${formatDisplayDate(dayDate)} - " +
                 "Week ${viewModel.currentWeek()}"
         } else if (binding.classList.visibility == View.VISIBLE) {
@@ -536,7 +529,7 @@ class TimetableFragment : Fragment() {
         fun addChoiceSection(title: Int, options: Array<String>, checked: Int, onChanged: (Int) -> Unit) {
             content.addView(TextView(requireContext()).apply {
                 text = getString(title)
-                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
+                setTextAppearance(R.style.TextAppearance_Kronos_SectionTitle)
                 setPadding(0, 20, 0, 4)
             })
             val group = android.widget.RadioGroup(requireContext()).apply {

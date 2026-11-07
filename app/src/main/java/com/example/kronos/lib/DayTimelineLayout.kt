@@ -12,21 +12,24 @@ data class TimelineBlock(
     val columnCount: Int
 )
 
+private const val DAY_START_MINUTE = 0
+private const val DAY_END_MINUTE = 24 * 60
+private const val DEFAULT_SCROLL_MINUTE = 7 * 60
+
 data class DayTimelineLayout(
-    val firstMinute: Int,
-    val lastMinute: Int,
+    val firstMinute: Int = DAY_START_MINUTE,
+    val lastMinute: Int = DAY_END_MINUTE,
     val blocks: List<TimelineBlock>
 ) {
     val durationMinutes: Int get() = lastMinute - firstMinute
 }
 
+// The axis always covers 00:00 to 24:00, so the day scrolls like a real clock.
 fun calculateDayTimelineLayout(
-    sessions: List<ClassSessionWithSubject>,
-    minimumFirstMinute: Int = 7 * 60,
-    minimumLastMinute: Int = 18 * 60
+    sessions: List<ClassSessionWithSubject>
 ): DayTimelineLayout {
     if (sessions.isEmpty()) {
-        return DayTimelineLayout(minimumFirstMinute, minimumLastMinute, emptyList())
+        return DayTimelineLayout(blocks = emptyList())
     }
 
     val intervals = sessions.map { session ->
@@ -36,8 +39,6 @@ fun calculateDayTimelineLayout(
         Interval(session, start, end)
     }.sortedWith(compareBy<Interval> { it.start }.thenByDescending { it.end })
 
-    val first = max(minimumFirstMinute, intervals.minOf { it.start } - 60)
-    val last = max(minimumLastMinute, intervals.maxOf { it.end } + 60)
     val result = ArrayList<TimelineBlock>(intervals.size)
     var groupStart = 0
     while (groupStart < intervals.size) {
@@ -71,7 +72,17 @@ fun calculateDayTimelineLayout(
         }
         groupStart = groupEnd
     }
-    return DayTimelineLayout(first, last, result)
+    return DayTimelineLayout(blocks = result)
+}
+
+fun initialScrollMinutes(
+    classStartMinutes: List<Int>,
+    isToday: Boolean,
+    nowMinutes: Int
+): Int {
+    if (isToday) return max(0, nowMinutes - 60)
+    val earliest = classStartMinutes.minOrNull() ?: return DEFAULT_SCROLL_MINUTE
+    return max(0, earliest - 60)
 }
 
 private data class Interval(
