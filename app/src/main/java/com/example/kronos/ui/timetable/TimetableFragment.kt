@@ -124,6 +124,10 @@ class TimetableFragment : Fragment() {
                 R.id.export_backup -> { createBackup.launch(getString(R.string.backup_file_name)); true }
                 R.id.import_backup -> { openBackup.launch(arrayOf("application/json", "text/plain")); true }
                 R.id.export_classes_csv -> { createClassesCsv.launch(getString(R.string.classes_csv_file_name)); true }
+                R.id.about -> {
+                    com.example.kronos.ui.about.AboutDialog().show(parentFragmentManager, "about")
+                    true
+                }
                 else -> false
             }
 

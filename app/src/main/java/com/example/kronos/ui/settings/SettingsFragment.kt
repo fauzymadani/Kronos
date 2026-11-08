@@ -249,12 +249,30 @@ class SettingsFragment : Fragment() {
         requireContext(), R.layout.item_editable, R.id.text, labels
     )
 
-    private fun dateRow(parent: LinearLayout, onClick: (TextView) -> Unit): TextView {
+    private fun itemRow(parent: LinearLayout, onClick: (TextView) -> Unit): TextView {
         val row = LayoutInflater.from(parent.context).inflate(R.layout.item_editable, parent, false)
         val text = row.findViewById<TextView>(R.id.text)
         row.setOnClickListener { onClick(text) }
         parent.addView(row)
         return text
+    }
+
+    // Same clock-face picker the class editor uses, so period times are picked the same way.
+    private fun pickTime(initial: LocalTime, title: Int, onPicked: (LocalTime) -> Unit) {
+        MaterialTimePicker.Builder()
+            .setTimeFormat(
+                if (SettingsStore(requireContext()).timeFormat == TimeFormat.HOUR_12) {
+                    com.google.android.material.timepicker.TimeFormat.CLOCK_12H
+                } else {
+                    com.google.android.material.timepicker.TimeFormat.CLOCK_24H
+                }
+            )
+            .setHour(initial.hour)
+            .setMinute(initial.minute)
+            .setTitleText(title)
+            .build().apply {
+                addOnPositiveButtonClickListener { onPicked(LocalTime.of(hour, minute)) }
+            }.show(parentFragmentManager, "periodTimePicker")
     }
 
     private fun showHolidayManager() {
@@ -285,11 +303,11 @@ class SettingsFragment : Fragment() {
             android.app.DatePickerDialog(requireContext(), { _, year, month, day ->
                 onPicked(LocalDate.of(year, month + 1, day))
             }, initial.year, initial.monthValue - 1, initial.dayOfMonth).show()
-        val start = dateRow(content) { text ->
+        val start = itemRow(content) { text ->
             pickDate(startDate) { startDate = it; text.text = label(R.string.start_date, it) }
         }
         start.text = label(R.string.start_date, startDate)
-        val end = dateRow(content) { text ->
+        val end = itemRow(content) { text ->
             pickDate(endDate) { endDate = it; text.text = label(R.string.end_date, it) }
         }
         end.text = label(R.string.end_date, endDate)
@@ -332,17 +350,22 @@ class SettingsFragment : Fragment() {
 
     private fun showPeriodsSettings() {
         val settings = SettingsStore(requireContext())
-        val periods = settings.periods.toMutableList()
-        val labels = periods.map { "${it.name}, ${it.start} - ${it.end}" }
-        MaterialAlertDialogBuilder(requireContext())
+        val periods = settings.periods
+        val labels = periods.map {
+            "${it.name}, ${formatDisplayTime(it.start, settings.timeFormat)} - " +
+                formatDisplayTime(it.end, settings.timeFormat)
+        }
+        val builder = MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.configure_periods)
-            .setMessage(R.string.configure_periods_hint)
-            .setAdapter(editableItems(labels)) { _, which -> editPeriod(settings, periods, which) }
-            .setPositiveButton(R.string.add_period) { _, _ -> editPeriod(settings, periods, null) }
-            .show()
+            .setAdapter(editableItems(labels)) { _, which -> editPeriod(periods[which]) }
+            .setPositiveButton(R.string.add_period) { _, _ -> editPeriod(null) }
+        // A message and a list in the same dialog compete for the content panel.
+        if (labels.isEmpty()) builder.setMessage(R.string.configure_periods_hint)
+        builder.show()
     }
 
-    private fun editPeriod(settings: SettingsStore, periods: MutableList<ClassPeriod>, index: Int?) {
+    private fun editPeriod(existing: ClassPeriod?) {
+        val settings = SettingsStore(requireContext())
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 8, 48, 0)
@@ -350,44 +373,58 @@ class SettingsFragment : Fragment() {
         val name = EditText(requireContext()).apply {
             hint = getString(R.string.period)
             inputType = InputType.TYPE_CLASS_TEXT
-            setText(index?.let { periods[it].name })
+            setText(existing?.name)
         }
-        val start = EditText(requireContext()).apply {
-            hint = getString(R.string.start_time)
-            inputType = InputType.TYPE_CLASS_DATETIME
-            setText(index?.let { periods[it].start.toString() } ?: "08:00")
+        layout.addView(name)
+        var startTime = existing?.start ?: LocalTime.of(8, 0)
+        var endTime = existing?.end ?: LocalTime.of(8, 45)
+        fun timeLabel(labelRes: Int, time: LocalTime) =
+            "${getString(labelRes)}: ${formatDisplayTime(time, settings.timeFormat)}"
+        val start = itemRow(layout) { text ->
+            pickTime(startTime, R.string.start_time) {
+                startTime = it
+                text.text = timeLabel(R.string.start_time, it)
+            }
         }
-        val end = EditText(requireContext()).apply {
-            hint = getString(R.string.end_time)
-            inputType = InputType.TYPE_CLASS_DATETIME
-            setText(index?.let { periods[it].end.toString() } ?: "08:45")
+        start.text = timeLabel(R.string.start_time, startTime)
+        val end = itemRow(layout) { text ->
+            pickTime(endTime, R.string.end_time) {
+                endTime = it
+                text.text = timeLabel(R.string.end_time, it)
+            }
         }
-        layout.addView(name); layout.addView(start); layout.addView(end)
+        end.text = timeLabel(R.string.end_time, endTime)
+        // Always write a freshly read list: the caller's copy is stale once a save happened.
+        fun persist(mutate: (MutableList<ClassPeriod>) -> Unit) {
+            val periods = settings.periods.toMutableList()
+            mutate(periods)
+            settings.periods = periods
+        }
         val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(if (index == null) R.string.add_period else R.string.period)
+            .setTitle(if (existing == null) R.string.add_period else R.string.period)
             .setView(layout)
             .setNegativeButton(android.R.string.cancel, null)
             .setPositiveButton(R.string.save, null)
-        if (index != null) dialog.setNeutralButton(R.string.delete) { _, _ ->
-            periods.removeAt(index)
-            settings.periods = periods
+        if (existing != null) dialog.setNeutralButton(R.string.delete) { _, _ ->
+            persist { periods -> periods.removeAll { it == existing } }
+            showPeriodsSettings()
         }
         val shown = dialog.create()
         shown.setOnShowListener {
             shown.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-                val value = runCatching {
-                    ClassPeriod(
-                        name.text.toString().trim().ifEmpty { throw IllegalArgumentException() },
-                        LocalTime.parse(start.text.toString()),
-                        LocalTime.parse(end.text.toString())
-                    )
-                }.getOrNull()
-                if (value == null || !value.end.isAfter(value.start)) {
-                    end.error = "Use HH:mm and an end after start"
-                } else {
-                    if (index == null) periods.add(value) else periods[index] = value
-                    settings.periods = periods
-                    shown.dismiss()
+                val periodName = name.text.toString().trim()
+                when {
+                    periodName.isEmpty() -> name.error = getString(R.string.required)
+                    !endTime.isAfter(startTime) -> name.error = "End time must be after start time"
+                    else -> {
+                        val value = ClassPeriod(periodName, startTime, endTime)
+                        persist { periods ->
+                            val at = periods.indexOfFirst { it == existing }
+                            if (at >= 0) periods[at] = value else periods.add(value)
+                        }
+                        shown.dismiss()
+                        showPeriodsSettings()
+                    }
                 }
             }
         }

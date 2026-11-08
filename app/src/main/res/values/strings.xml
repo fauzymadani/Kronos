@@ -188,4 +188,13 @@
     <string name="no_exams_match_filter">No exams match this filter</string>
     <string name="no_exams_on_day">No exams on this day</string>
     <string name="no_categories_yet">No categories yet. Add one to organize your tasks.</string>
+    <string name="about_title">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_author_label">Author</string>
+    <string name="about_author">Fauzy Madani</string>
+    <string name="about_license_label">License</string>
+    <string name="about_license">GNU General Public License v3.0</string>
+    <string name="about_tagline">A private, offline class timetable.</string>
+    <string name="about_close">Close</string>
+    <string name="about_license_title">License</string>
 </resources>
