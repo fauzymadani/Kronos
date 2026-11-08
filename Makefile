@@ -9,8 +9,11 @@ APK_RELEASE := app/build/outputs/apk/release/app-release.apk
 GRADLE      := ./gradlew
 ADB         := adb
 
+# Resolve the SDK dir from the environment, falling back to local.properties.
+SDK_DIR     := $(or $(ANDROID_HOME),$(ANDROID_SDK_ROOT),$(shell sed -n 's/^sdk\.dir=//p' local.properties))
+
 # Resolve the newest installed build-tools version unless overridden.
-BUILD_TOOLS ?= $(shell ls -d $$ANDROID_HOME/build-tools/* 2>/dev/null | sort -V | tail -n1)
+BUILD_TOOLS ?= $(shell ls -d $(SDK_DIR)/build-tools/* 2>/dev/null | sort -V | tail -n1)
 
 .PHONY: help
 help:
@@ -88,9 +91,10 @@ path:
 
 .PHONY: apk-info
 apk-info:
-	@echo "== Version =="
+	@test -n "$(BUILD_TOOLS)" || { echo "Build-tools not found: set ANDROID_HOME or sdk.dir in local.properties"; exit 1; }
+	@echo "-- Version --"
 	@$(BUILD_TOOLS)/aapt dump badging $(APK_RELEASE) | grep -E "versionCode|versionName"
-	@echo "== Signature =="
+	@echo "-- Signature --"
 	@$(BUILD_TOOLS)/apksigner verify --print-certs $(APK_RELEASE)
 
 .PHONY: screenshot
