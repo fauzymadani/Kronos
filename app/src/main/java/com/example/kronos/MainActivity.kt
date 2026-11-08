@@ -16,6 +16,8 @@ class MainActivity : AppCompatActivity() {
             Configuration.UI_MODE_NIGHT_YES
         if (isDark && settings.pureBlack) setTheme(R.style.Theme_Kronos_Amoled)
         super.onCreate(savedInstanceState)
+        val overlayRes = accentOverlay(settings.accentColor)
+        if (overlayRes != 0) theme.applyStyle(overlayRes, true)
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = !isDark
             isAppearanceLightNavigationBars = !isDark
@@ -24,6 +26,18 @@ class MainActivity : AppCompatActivity() {
         val navHost = supportFragmentManager.findFragmentById(R.id.nav_host) as NavHostFragment
         findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(R.id.bottomNavigation)
             .setupWithNavController(navHost.navController)
+    }
+
+    // Purple is the base theme, so it maps to 0 and no overlay is applied.
+    private fun accentOverlay(accent: String): Int = when (accent) {
+        "indigo" -> R.style.ThemeOverlay_Kronos_Accent_Indigo
+        "blue" -> R.style.ThemeOverlay_Kronos_Accent_Blue
+        "teal" -> R.style.ThemeOverlay_Kronos_Accent_Teal
+        "green" -> R.style.ThemeOverlay_Kronos_Accent_Green
+        "orange" -> R.style.ThemeOverlay_Kronos_Accent_Orange
+        "rose" -> R.style.ThemeOverlay_Kronos_Accent_Rose
+        "graphite" -> R.style.ThemeOverlay_Kronos_Accent_Graphite
+        else -> 0
     }
 
     override fun onResume() {

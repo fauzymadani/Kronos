@@ -22,3 +22,6 @@ local.properties
 *.keystore
 
 keystore.properties
+
+# Local assistant rule files
+.clinerules/

@@ -3,6 +3,7 @@ package com.example.kronos.ui.settings
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -15,10 +16,12 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import com.example.kronos.R
 import com.example.kronos.data.ClassPeriod
 import com.example.kronos.data.FirstDayOfWeek
@@ -32,6 +35,7 @@ import com.example.kronos.lib.formatDisplayDate
 import com.example.kronos.lib.formatDisplayTime
 import com.example.kronos.notifications.TaskExamReminderScheduler
 import com.example.kronos.widget.TimetableWidgetProvider
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.timepicker.MaterialTimePicker
@@ -44,6 +48,20 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
     private var holidays: List<Holiday> = emptyList()
 
+    private data class AccentOption(val key: String, val nameRes: Int, val swatchRes: Int)
+
+    // Fixed order: users learn the strip by position, so this list is not sorted.
+    private val accents = listOf(
+        AccentOption("purple", R.string.accent_purple, R.color.accent_swatch_purple),
+        AccentOption("indigo", R.string.accent_indigo, R.color.accent_swatch_indigo),
+        AccentOption("blue", R.string.accent_blue, R.color.accent_swatch_blue),
+        AccentOption("teal", R.string.accent_teal, R.color.accent_swatch_teal),
+        AccentOption("green", R.string.accent_green, R.color.accent_swatch_green),
+        AccentOption("orange", R.string.accent_orange, R.color.accent_swatch_orange),
+        AccentOption("rose", R.string.accent_rose, R.color.accent_swatch_rose),
+        AccentOption("graphite", R.string.accent_graphite, R.color.accent_swatch_graphite)
+    )
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -55,6 +73,12 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val settings = SettingsStore(requireContext())
+
+        val navController = findNavController()
+        binding.toolbar.setNavigationOnClickListener {
+            // Same as system back: previous tab. Fall back to the start tab when there is none.
+            if (!navController.popBackStack()) navController.navigate(R.id.timetableFragment)
+        }
 
         binding.themeModeToggle.check(
             when (settings.themeMode) {
@@ -74,6 +98,7 @@ class SettingsFragment : Fragment() {
                 R.id.firstDaySunday
             }
         )
+        renderAccents(settings)
         binding.rotationSlider.value = settings.rotationLength.toFloat()
         binding.reminderOffsetSlider.value = (settings.defaultReminderOffsetMinutes / 5 * 5)
             .coerceIn(
@@ -225,6 +250,36 @@ class SettingsFragment : Fragment() {
 
     private fun renderSemesterStart(settings: SettingsStore) {
         binding.semesterStartButton.text = formatDisplayDate(settings.semesterStart)
+    }
+
+    // Plain Views instead of drawables or a RecyclerView: eight dots, no scrolling, no adapter.
+    // shortcut: 32dp tap targets (not 48dp) so all eight fit one 360dp-wide row; revisit if the strip ever scrolls.
+    private fun renderAccents(settings: SettingsStore) {
+        val size = (32 * resources.displayMetrics.density).toInt()
+        val spacing = (8 * resources.displayMetrics.density).toInt()
+        val ringWidth = (2 * resources.displayMetrics.density).toInt().coerceAtLeast(2)
+        val ringColor = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnSurface)
+        accents.forEach { accent ->
+            val selected = accent.key == settings.accentColor
+            val swatch = View(requireContext())
+            swatch.layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                marginStart = spacing
+            }
+            swatch.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(ContextCompat.getColor(requireContext(), accent.swatchRes))
+                // A ring marks the selection: scaling the view instead blurs the oval edges.
+                if (selected) setStroke(ringWidth, ringColor)
+            }
+            swatch.contentDescription = getString(accent.nameRes)
+            swatch.setOnClickListener {
+                if (!selected) {
+                    settings.accentColor = accent.key
+                    requireActivity().recreate()
+                }
+            }
+            binding.accentSwatches.addView(swatch)
+        }
     }
 
     private fun rescheduleReminders() {

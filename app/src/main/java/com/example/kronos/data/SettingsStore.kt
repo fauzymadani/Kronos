@@ -56,6 +56,11 @@ class SettingsStore(context: Context) {
         get() = preferences.getBoolean(KEY_PURE_BLACK, false)
         set(value) = preferences.edit { putBoolean(KEY_PURE_BLACK, value) }
 
+    // Per-device only: kept out of exportableSettings() so a backup does not repaint another phone.
+    var accentColor: String
+        get() = preferences.getString(KEY_ACCENT, "purple") ?: "purple"
+        set(value) = preferences.edit { putString(KEY_ACCENT, value) }
+
     var timeFormat: TimeFormat
         get() = TimeFormat.fromStoredValue(preferences.getString(KEY_TIME_FORMAT, null))
         set(value) = preferences.edit { putString(KEY_TIME_FORMAT, value.value) }
@@ -124,6 +129,7 @@ class SettingsStore(context: Context) {
         private const val KEY_PERIODS = "class_periods"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_PURE_BLACK = "pure_black"
+        private const val KEY_ACCENT = "accent_color"
         private const val KEY_TIME_FORMAT = "time_format"
         private const val KEY_FIRST_DAY = "first_day_of_week"
         private const val KEY_DAY_VIEW_EXAMS = "day_view_exams"

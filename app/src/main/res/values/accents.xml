@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Swatch for the strip, its two on-colors, and a pale container pair: Material fills the
+         slider's inactive track and checked toggles with the container color, so a strong
+         container reads as a solid block. Purple is the base theme, so it has no overlay. -->
+    <color name="accent_swatch_purple">#6750A4</color>
+    <color name="accent_on_purple">#FFFFFFFF</color>
+    <color name="accent_container_purple">#EAE6F2</color>
+    <color name="accent_on_container_purple">#171224</color>
+    <color name="accent_swatch_indigo">#3949AB</color>
+    <color name="accent_on_indigo">#FFFFFFFF</color>
+    <color name="accent_container_indigo">#E3E6F3</color>
+    <color name="accent_on_container_indigo">#0D1026</color>
+    <color name="accent_swatch_blue">#1565C0</color>
+    <color name="accent_on_blue">#FFFFFFFF</color>
+    <color name="accent_container_blue">#DEE9F6</color>
+    <color name="accent_on_container_blue">#05162A</color>
+    <color name="accent_swatch_teal">#00695C</color>
+    <color name="accent_on_teal">#FFFFFFFF</color>
+    <color name="accent_container_teal">#DBEAE8</color>
+    <color name="accent_on_container_teal">#001714</color>
+    <color name="accent_swatch_green">#2E7D32</color>
+    <color name="accent_on_green">#FFFFFFFF</color>
+    <color name="accent_container_green">#E2EDE2</color>
+    <color name="accent_on_container_green">#0A1C0B</color>
+    <color name="accent_swatch_orange">#E65100</color>
+    <color name="accent_on_orange">#FFFFFFFF</color>
+    <color name="accent_container_orange">#FCE7DB</color>
+    <color name="accent_on_container_orange">#331200</color>
+    <color name="accent_swatch_rose">#AD1457</color>
+    <color name="accent_on_rose">#FFFFFFFF</color>
+    <color name="accent_container_rose">#F4DEE7</color>
+    <color name="accent_on_container_rose">#260413</color>
+    <color name="accent_swatch_graphite">#37474F</color>
+    <color name="accent_on_graphite">#FFFFFFFF</color>
+    <color name="accent_container_graphite">#E3E5E6</color>
+    <color name="accent_on_container_graphite">#0C1011</color>
+    <style name="ThemeOverlay.Kronos.Accent.Indigo" parent="ThemeOverlay.Material3">
+        <item name="colorPrimary">@color/accent_swatch_indigo</item>
+        <item name="colorOnPrimary">@color/accent_on_indigo</item>
+        <item name="colorPrimaryContainer">@color/accent_container_indigo</item>
+        <item name="colorOnPrimaryContainer">@color/accent_on_container_indigo</item>
+        <item name="colorSecondary">@color/accent_swatch_indigo</item>
+        <item name="colorOnSecondary">@color/accent_on_indigo</item>
+        <item name="colorSecondaryContainer">@color/accent_container_indigo</item>
+        <item name="colorOnSecondaryContainer">@color/accent_on_container_indigo</item>
+        <item name="android:colorAccent">@color/accent_swatch_indigo</item>
+    </style>
+
+    <style name="ThemeOverlay.Kronos.Accent.Blue" parent="ThemeOverlay.Material3">
+        <item name="colorPrimary">@color/accent_swatch_blue</item>
+        <item name="colorOnPrimary">@color/accent_on_blue</item>
+        <item name="colorPrimaryContainer">@color/accent_container_blue</item>
+        <item name="colorOnPrimaryContainer">@color/accent_on_container_blue</item>
+        <item name="colorSecondary">@color/accent_swatch_blue</item>
+        <item name="colorOnSecondary">@color/accent_on_blue</item>
+        <item name="colorSecondaryContainer">@color/accent_container_blue</item>
+        <item name="colorOnSecondaryContainer">@color/accent_on_container_blue</item>
+        <item name="android:colorAccent">@color/accent_swatch_blue</item>
+    </style>
+
+    <style name="ThemeOverlay.Kronos.Accent.Teal" parent="ThemeOverlay.Material3">
+        <item name="colorPrimary">@color/accent_swatch_teal</item>
+        <item name="colorOnPrimary">@color/accent_on_teal</item>
+        <item name="colorPrimaryContainer">@color/accent_container_teal</item>
+        <item name="colorOnPrimaryContainer">@color/accent_on_container_teal</item>
+        <item name="colorSecondary">@color/accent_swatch_teal</item>
+        <item name="colorOnSecondary">@color/accent_on_teal</item>
+        <item name="colorSecondaryContainer">@color/accent_container_teal</item>
+        <item name="colorOnSecondaryContainer">@color/accent_on_container_teal</item>
+        <item name="android:colorAccent">@color/accent_swatch_teal</item>
+    </style>
+    <style name="ThemeOverlay.Kronos.Accent.Green" parent="ThemeOverlay.Material3">
+        <item name="colorPrimary">@color/accent_swatch_green</item>
+        <item name="colorOnPrimary">@color/accent_on_green</item>
+        <item name="colorPrimaryContainer">@color/accent_container_green</item>
+        <item name="colorOnPrimaryContainer">@color/accent_on_container_green</item>
+        <item name="colorSecondary">@color/accent_swatch_green</item>
+        <item name="colorOnSecondary">@color/accent_on_green</item>
+        <item name="colorSecondaryContainer">@color/accent_container_green</item>
+        <item name="colorOnSecondaryContainer">@color/accent_on_container_green</item>
+        <item name="android:colorAccent">@color/accent_swatch_green</item>
+    </style>
+
+    <style name="ThemeOverlay.Kronos.Accent.Orange" parent="ThemeOverlay.Material3">
+        <item name="colorPrimary">@color/accent_swatch_orange</item>
+        <item name="colorOnPrimary">@color/accent_on_orange</item>
+        <item name="colorPrimaryContainer">@color/accent_container_orange</item>
+        <item name="colorOnPrimaryContainer">@color/accent_on_container_orange</item>
+        <item name="colorSecondary">@color/accent_swatch_orange</item>
+        <item name="colorOnSecondary">@color/accent_on_orange</item>
+        <item name="colorSecondaryContainer">@color/accent_container_orange</item>
+        <item name="colorOnSecondaryContainer">@color/accent_on_container_orange</item>
+        <item name="android:colorAccent">@color/accent_swatch_orange</item>
+    </style>
+
+    <style name="ThemeOverlay.Kronos.Accent.Rose" parent="ThemeOverlay.Material3">
+        <item name="colorPrimary">@color/accent_swatch_rose</item>
+        <item name="colorOnPrimary">@color/accent_on_rose</item>
+        <item name="colorPrimaryContainer">@color/accent_container_rose</item>
+        <item name="colorOnPrimaryContainer">@color/accent_on_container_rose</item>
+        <item name="colorSecondary">@color/accent_swatch_rose</item>
+        <item name="colorOnSecondary">@color/accent_on_rose</item>
+        <item name="colorSecondaryContainer">@color/accent_container_rose</item>
+        <item name="colorOnSecondaryContainer">@color/accent_on_container_rose</item>
+        <item name="android:colorAccent">@color/accent_swatch_rose</item>
+    </style>
+
+    <style name="ThemeOverlay.Kronos.Accent.Graphite" parent="ThemeOverlay.Material3">
+        <item name="colorPrimary">@color/accent_swatch_graphite</item>
+        <item name="colorOnPrimary">@color/accent_on_graphite</item>
+        <item name="colorPrimaryContainer">@color/accent_container_graphite</item>
+        <item name="colorOnPrimaryContainer">@color/accent_on_container_graphite</item>
+        <item name="colorSecondary">@color/accent_swatch_graphite</item>
+        <item name="colorOnSecondary">@color/accent_on_graphite</item>
+        <item name="colorSecondaryContainer">@color/accent_container_graphite</item>
+        <item name="colorOnSecondaryContainer">@color/accent_on_container_graphite</item>
+        <item name="android:colorAccent">@color/accent_swatch_graphite</item>
+    </style>
+
+</resources>

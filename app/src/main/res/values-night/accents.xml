@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark surfaces need lighter accents, so the on-color flips to near-black and the container
+         stays dark with the pale accent as its on-color. -->
+    <color name="accent_swatch_purple">#CFBCFF</color>
+    <color name="accent_on_purple">#1E192B</color>
+    <color name="accent_container_purple">#3E384C</color>
+    <color name="accent_on_container_purple">#CFBCFF</color>
+    <color name="accent_swatch_indigo">#A9B4FF</color>
+    <color name="accent_on_indigo">#10163F</color>
+    <color name="accent_container_indigo">#33364C</color>
+    <color name="accent_on_container_indigo">#A9B4FF</color>
+    <color name="accent_swatch_blue">#90CAF9</color>
+    <color name="accent_on_blue">#0A2A45</color>
+    <color name="accent_container_blue">#2B3D4B</color>
+    <color name="accent_on_container_blue">#90CAF9</color>
+    <color name="accent_swatch_teal">#80CBC4</color>
+    <color name="accent_on_teal">#00251F</color>
+    <color name="accent_container_teal">#263D3B</color>
+    <color name="accent_on_container_teal">#80CBC4</color>
+    <color name="accent_swatch_green">#A5D6A7</color>
+    <color name="accent_on_green">#0F2E12</color>
+    <color name="accent_container_green">#324032</color>
+    <color name="accent_on_container_green">#A5D6A7</color>
+    <color name="accent_swatch_orange">#FFCC80</color>
+    <color name="accent_on_orange">#3A1D00</color>
+    <color name="accent_container_orange">#4C3D26</color>
+    <color name="accent_on_container_orange">#FFCC80</color>
+    <color name="accent_swatch_rose">#F48FB1</color>
+    <color name="accent_on_rose">#3C0D24</color>
+    <color name="accent_container_rose">#492B35</color>
+    <color name="accent_on_container_rose">#F48FB1</color>
+    <color name="accent_swatch_graphite">#B0BEC5</color>
+    <color name="accent_on_graphite">#1A2429</color>
+    <color name="accent_container_graphite">#35393B</color>
+    <color name="accent_on_container_graphite">#B0BEC5</color>
+</resources>
