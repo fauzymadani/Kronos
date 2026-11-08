@@ -15,4 +15,8 @@
         android:id="@+id/examsFragment"
         android:name="com.example.kronos.ui.exams.ExamsFragment"
         android:label="@string/exams_title" />
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.example.kronos.ui.settings.SettingsFragment"
+        android:label="@string/settings" />
 </navigation>

@@ -16,6 +16,13 @@
     <string name="rotation_length">Rotation length</string>
     <string name="semester_start">Semester start date</string>
     <string name="settings">Settings</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_timetable">Timetable</string>
+    <string name="settings_section_reminders">Reminders</string>
+    <string name="settings_semester_start">Semester start</string>
+    <string name="settings_reminder_default">Default reminder</string>
+    <string name="settings_rotation_weeks">%1$d weeks</string>
+    <string name="settings_minutes_before">%1$d min before</string>
     <string name="theme_settings">Theme</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
@@ -131,6 +138,7 @@
     <string name="period">Period</string>
     <string name="custom_times">Custom times</string>
     <string name="configure_periods">Configure periods</string>
+    <string name="configure_periods_hint">Time slots you can pick when adding a class. Tap one to edit.</string>
     <string name="add_period">Add period</string>
     <string name="class_reminder_enabled">Remind me before class</string>
     <string name="reminder_use_default">Use default reminder time</string>

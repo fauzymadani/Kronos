@@ -1,7 +1,6 @@
 package com.example.kronos.ui.timetable
 
 import android.os.Bundle
-import android.content.res.Configuration
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,13 +9,10 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.kronos.R
 import com.example.kronos.data.SettingsStore
-import com.example.kronos.data.ClassPeriod
-import com.example.kronos.data.ThemeMode
-import com.example.kronos.data.FirstDayOfWeek
-import com.example.kronos.data.TimeFormat
 import com.example.kronos.data.TimetableRepository
 import com.example.kronos.data.local.ClassSessionWithSubject
 import com.example.kronos.data.local.DatabaseProvider
@@ -35,14 +31,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalTime
 import java.time.LocalDate
 import java.time.YearMonth
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.text.InputType
-import android.widget.TextView
-import android.content.Intent
 import android.net.Uri
-import android.provider.Settings
-import com.google.android.material.switchmaterial.SwitchMaterial
 import androidx.activity.result.contract.ActivityResultContracts
 import com.example.kronos.data.BackupJsonCodec
 import com.example.kronos.data.BackupRepository
@@ -114,6 +103,11 @@ class TimetableFragment : Fragment() {
         return binding.root
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (_binding != null) applyDisplaySettings()
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         binding.toolbar.title = "${getString(R.string.timetable_title)} · Week ${viewModel.currentWeek()}"
         binding.toolbar.inflateMenu(R.menu.timetable_menu)
@@ -123,9 +117,10 @@ class TimetableFragment : Fragment() {
                 R.id.week_view -> showWeekView()
                 R.id.month_view -> showMonthView()
                 R.id.show_exams -> toggleDayExams()
-                R.id.settings -> showSettings()
-                R.id.theme_settings -> showThemeSettings()
-                R.id.reminder_settings -> showReminderSettings()
+                R.id.settings -> {
+                    findNavController().navigate(R.id.settingsFragment)
+                    true
+                }
                 R.id.export_backup -> { createBackup.launch(getString(R.string.backup_file_name)); true }
                 R.id.import_backup -> { openBackup.launch(arrayOf("application/json", "text/plain")); true }
                 R.id.export_classes_csv -> { createClassesCsv.launch(getString(R.string.classes_csv_file_name)); true }
@@ -416,72 +411,6 @@ class TimetableFragment : Fragment() {
         return true
     }
 
-    private fun showReminderSettings(): Boolean {
-        val settings = SettingsStore(requireContext())
-        val values = intArrayOf(5, 10, 15, 30)
-        val labels = values.map { getString(R.string.reminder_minutes_before, it) }.toTypedArray()
-        val selected = values.indexOf(settings.defaultReminderOffsetMinutes).coerceAtLeast(0)
-        val layout = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 0, 48, 0)
-        }
-        val tasks = SwitchMaterial(requireContext()).apply {
-            text = getString(R.string.task_reminders)
-            isChecked = settings.taskRemindersEnabled
-        }
-        val classes = SwitchMaterial(requireContext()).apply {
-            text = getString(R.string.class_reminder_enabled)
-            isChecked = settings.classRemindersEnabled
-        }
-        val exams = SwitchMaterial(requireContext()).apply {
-            text = getString(R.string.exam_reminders)
-            isChecked = settings.examRemindersEnabled
-        }
-        val dayBefore = SwitchMaterial(requireContext()).apply {
-            text = getString(R.string.exam_day_before)
-            isChecked = settings.examDayBeforeEnabled
-        }
-        val hourBefore = SwitchMaterial(requireContext()).apply {
-            text = getString(R.string.exam_hour_before)
-            isChecked = settings.examHourBeforeEnabled
-        }
-        val examHour = EditText(requireContext()).apply {
-            hint = getString(R.string.exam_reminder_hour)
-            inputType = InputType.TYPE_CLASS_DATETIME
-            setText(settings.examReminderHour.toString())
-        }
-        layout.addView(classes); layout.addView(tasks); layout.addView(exams); layout.addView(dayBefore); layout.addView(hourBefore)
-        layout.addView(examHour)
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.reminder_settings)
-            .setView(layout)
-            .setSingleChoiceItems(labels, selected) { dialog, which ->
-                settings.defaultReminderOffsetMinutes = values[which]
-                dialog.dismiss()
-            }
-            .setNeutralButton(R.string.open_channel_settings) { _, _ ->
-                startActivity(
-                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                        putExtra(Settings.EXTRA_APP_PACKAGE, requireContext().packageName)
-                        data = Uri.parse("package:${requireContext().packageName}")
-                    }
-                )
-            }
-            .setPositiveButton(R.string.save) { _, _ ->
-                settings.taskRemindersEnabled = tasks.isChecked
-                settings.classRemindersEnabled = classes.isChecked
-                settings.examRemindersEnabled = exams.isChecked
-                settings.examDayBeforeEnabled = dayBefore.isChecked
-                settings.examHourBeforeEnabled = hourBefore.isChecked
-                runCatching { settings.examReminderHour = LocalTime.parse(examHour.text.toString()) }
-                viewLifecycleOwner.lifecycleScope.launch {
-                    TaskExamReminderScheduler(requireContext()).rescheduleAll()
-                }
-            }
-            .show()
-        return true
-    }
-
     private fun editClass(item: ClassSessionWithSubject) {
         ClassEditorBottomSheet.new(item.dayOfWeek, item)
             .show(parentFragmentManager, "classEditor")
@@ -517,298 +446,6 @@ class TimetableFragment : Fragment() {
             ).join()
             reminderScheduler.rescheduleAll()
         }
-    }
-
-    private fun showSettings(): Boolean {
-        val settings = SettingsStore(requireContext())
-        val choices = arrayOf("1 week", "2 weeks", "3 weeks", "4 weeks", getString(R.string.display_settings))
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.rotation_length)
-            .setSingleChoiceItems(choices, settings.rotationLength - 1) { dialog, which ->
-                if (which == 4) {
-                    dialog.dismiss()
-                    showDisplaySettings()
-                    return@setSingleChoiceItems
-                }
-                settings.rotationLength = which + 1
-                com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
-                viewLifecycleOwner.lifecycleScope.launch { reminderScheduler.rescheduleAll() }
-                dialog.dismiss()
-            }
-            .setPositiveButton(R.string.semester_start) { _, _ ->
-                val date = settings.semesterStart
-                android.app.DatePickerDialog(requireContext(), { _, year, month, day ->
-                    settings.semesterStart = java.time.LocalDate.of(year, month + 1, day)
-                    com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
-                    viewLifecycleOwner.lifecycleScope.launch { reminderScheduler.rescheduleAll() }
-                }, date.year, date.monthValue - 1, date.dayOfMonth).show()
-            }
-            .setNeutralButton(R.string.configure_periods) { _, _ -> showPeriodsSettings() }
-            .setNegativeButton(R.string.holidays) { _, _ -> showHolidayManager() }
-            .show()
-        return true
-    }
-
-    private fun showDisplaySettings() {
-        val settings = SettingsStore(requireContext())
-        var selectedTimeFormat = settings.timeFormat
-        var selectedFirstDay = settings.firstDayOfWeek
-        val content = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(32, 0, 32, 0)
-        }
-        fun addChoiceSection(title: Int, options: Array<String>, checked: Int, onChanged: (Int) -> Unit) {
-            content.addView(TextView(requireContext()).apply {
-                text = getString(title)
-                setTextAppearance(R.style.TextAppearance_Kronos_SectionTitle)
-                setPadding(0, 20, 0, 4)
-            })
-            val group = android.widget.RadioGroup(requireContext()).apply {
-                orientation = android.widget.RadioGroup.VERTICAL
-            }
-            options.forEachIndexed { index, label ->
-                group.addView(android.widget.RadioButton(requireContext()).apply {
-                    id = View.generateViewId()
-                    text = label
-                    tag = index
-                })
-            }
-            group.check(group.getChildAt(checked).id)
-            group.setOnCheckedChangeListener { _, checkedId ->
-                group.findViewById<android.widget.RadioButton>(checkedId)
-                    ?.tag
-                    ?.let { onChanged(it as Int) }
-            }
-            content.addView(group)
-        }
-        addChoiceSection(
-            R.string.time_format,
-            arrayOf(getString(R.string.time_format_24), getString(R.string.time_format_12)),
-            if (settings.timeFormat == TimeFormat.HOUR_24) 0 else 1
-        ) { index ->
-            selectedTimeFormat = if (index == 0) TimeFormat.HOUR_24 else TimeFormat.HOUR_12
-        }
-        addChoiceSection(
-            R.string.first_day_of_week,
-            arrayOf(getString(R.string.monday), getString(R.string.sunday)),
-            if (settings.firstDayOfWeek == FirstDayOfWeek.MONDAY) 0 else 1
-        ) { index ->
-            selectedFirstDay = if (index == 0) FirstDayOfWeek.MONDAY else FirstDayOfWeek.SUNDAY
-        }
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.display_settings)
-            .setView(content)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.save) { _, _ ->
-                settings.timeFormat = selectedTimeFormat
-                settings.firstDayOfWeek = selectedFirstDay
-                applyDisplaySettings()
-                com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
-            }
-            .show()
-    }
-
-    private fun showThemeSettings(): Boolean {
-        val settings = SettingsStore(requireContext())
-        val modes = arrayOf(
-            getString(R.string.theme_light),
-            getString(R.string.theme_dark),
-            getString(R.string.theme_auto_battery)
-        )
-        val selected = when (settings.themeMode) {
-            ThemeMode.LIGHT -> 0
-            ThemeMode.DARK -> 1
-            ThemeMode.AUTO_BATTERY -> 2
-        }
-
-        val content = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 0, 48, 0)
-        }
-        val amoled = SwitchMaterial(requireContext()).apply {
-            text = getString(R.string.pure_black)
-            isChecked = settings.pureBlack
-            setPadding(0, 12, 0, 12)
-        }
-        content.addView(amoled)
-        val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.theme_settings)
-            .setSingleChoiceItems(modes, selected) { dialogInterface, which ->
-                settings.themeMode = ThemeMode.values()[which]
-                com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
-                dialogInterface.dismiss()
-                recreateForTheme()
-            }
-            .setView(content)
-            .setNegativeButton(android.R.string.cancel, null)
-            .create()
-        amoled.setOnCheckedChangeListener { _, checked ->
-            settings.pureBlack = checked
-            com.example.kronos.widget.TimetableWidgetProvider.requestUpdate(requireContext())
-            if (settings.themeMode == ThemeMode.DARK ||
-                (settings.themeMode == ThemeMode.AUTO_BATTERY &&
-                    (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-                    Configuration.UI_MODE_NIGHT_YES)
-            ) {
-                dialog.dismiss()
-                recreateForTheme()
-            }
-        }
-        dialog.show()
-        return true
-    }
-
-    private fun recreateForTheme() {
-        val mode = when (SettingsStore(requireContext()).themeMode) {
-            ThemeMode.LIGHT -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
-            ThemeMode.DARK -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
-            ThemeMode.AUTO_BATTERY -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY
-        }
-        val modeChanged = androidx.appcompat.app.AppCompatDelegate.getDefaultNightMode() != mode
-        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
-        if (!modeChanged) requireActivity().recreate()
-    }
-
-    private fun showHolidayManager() {
-        val labels = holidays.map { "${it.name}: ${it.startDate} – ${it.endDate}" }.toMutableList()
-        labels += getString(R.string.add_holiday)
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.holidays)
-            .setItems(labels.toTypedArray()) { _, which ->
-                if (which == holidays.size) editHoliday(null) else editHoliday(holidays[which])
-            }
-            .show()
-    }
-
-    private fun editHoliday(existing: Holiday?) {
-        val content = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 8, 48, 0)
-        }
-        val name = EditText(requireContext()).apply {
-            hint = getString(R.string.holiday_name)
-            setText(existing?.name)
-        }
-        val start = TextView(requireContext()).apply { setPadding(0, 20, 0, 20) }
-        val end = TextView(requireContext()).apply { setPadding(0, 20, 0, 20) }
-        var startDate = existing?.startDate ?: LocalDate.now()
-        var endDate = existing?.endDate ?: startDate
-        fun render() {
-            start.text = "${getString(R.string.start_date)}: $startDate"
-            end.text = "${getString(R.string.end_date)}: $endDate"
-        }
-        start.setOnClickListener {
-            android.app.DatePickerDialog(requireContext(), { _, year, month, day ->
-                startDate = LocalDate.of(year, month + 1, day)
-                render()
-            }, startDate.year, startDate.monthValue - 1, startDate.dayOfMonth).show()
-        }
-        end.setOnClickListener {
-            android.app.DatePickerDialog(requireContext(), { _, year, month, day ->
-                endDate = LocalDate.of(year, month + 1, day)
-                render()
-            }, endDate.year, endDate.monthValue - 1, endDate.dayOfMonth).show()
-        }
-        content.addView(name)
-        content.addView(start)
-        content.addView(end)
-        render()
-        val builder = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(if (existing == null) R.string.add_holiday else R.string.edit_holiday)
-            .setView(content)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.save, null)
-        if (existing != null) {
-            builder.setNeutralButton(R.string.delete_holiday) { _, _ ->
-                viewLifecycleOwner.lifecycleScope.launch {
-                    viewModel.deleteHoliday(existing).join()
-                    reminderScheduler.rescheduleAll()
-                }
-            }
-        }
-        val dialog = builder.create()
-        dialog.setOnShowListener {
-            dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-                val trimmed = name.text.toString().trim()
-                if (trimmed.isEmpty() || endDate.isBefore(startDate)) {
-                    if (endDate.isBefore(startDate)) {
-                        name.error = getString(R.string.holiday_invalid_range)
-                    }
-                    return@setOnClickListener
-                }
-                viewLifecycleOwner.lifecycleScope.launch {
-                    viewModel.saveHoliday(
-                        Holiday(existing?.id ?: 0L, trimmed, startDate, endDate)
-                    ).join()
-                    reminderScheduler.rescheduleAll()
-                }
-                dialog.dismiss()
-            }
-        }
-        dialog.show()
-    }
-
-    private fun showPeriodsSettings() {
-        val settings = SettingsStore(requireContext())
-        val periods = settings.periods.toMutableList()
-        val labels = periods.map { "${it.name}, ${it.start} - ${it.end}" }.toTypedArray()
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(R.string.configure_periods)
-            .setItems(labels) { _, which -> editPeriod(settings, periods, which) }
-            .setPositiveButton(R.string.add_period) { _, _ -> editPeriod(settings, periods, null) }
-            .show()
-    }
-
-    private fun editPeriod(settings: SettingsStore, periods: MutableList<ClassPeriod>, index: Int?) {
-        val layout = LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 8, 48, 0)
-        }
-        val name = EditText(requireContext()).apply {
-            hint = getString(R.string.period)
-            inputType = InputType.TYPE_CLASS_TEXT
-            setText(index?.let { periods[it].name })
-        }
-        val start = EditText(requireContext()).apply {
-            hint = getString(R.string.start_time)
-            inputType = InputType.TYPE_CLASS_DATETIME
-            setText(index?.let { periods[it].start.toString() } ?: "08:00")
-        }
-        val end = EditText(requireContext()).apply {
-            hint = getString(R.string.end_time)
-            inputType = InputType.TYPE_CLASS_DATETIME
-            setText(index?.let { periods[it].end.toString() } ?: "08:45")
-        }
-        layout.addView(name); layout.addView(start); layout.addView(end)
-        val dialog = MaterialAlertDialogBuilder(requireContext())
-            .setTitle(if (index == null) R.string.add_period else R.string.period)
-            .setView(layout)
-            .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton(R.string.save, null)
-        if (index != null) dialog.setNeutralButton(R.string.delete) { _, _ ->
-            periods.removeAt(index)
-            settings.periods = periods
-        }
-        val shown = dialog.create()
-        shown.setOnShowListener {
-            shown.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener {
-                val value = runCatching {
-                    ClassPeriod(
-                        name.text.toString().trim().ifEmpty { throw IllegalArgumentException() },
-                        LocalTime.parse(start.text.toString()),
-                        LocalTime.parse(end.text.toString())
-                    )
-                }.getOrNull()
-                if (value == null || !value.end.isAfter(value.start)) {
-                    end.error = "Use HH:mm and an end after start"
-                } else {
-                    if (index == null) periods.add(value) else periods[index] = value
-                    settings.periods = periods
-                    shown.dismiss()
-                }
-            }
-        }
-        shown.show()
     }
 
     override fun onDestroyView() {

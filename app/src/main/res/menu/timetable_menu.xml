@@ -26,14 +26,6 @@
         android:title="@string/settings"
         android:showAsAction="never" />
     <item
-        android:id="@+id/theme_settings"
-        android:title="@string/theme_settings"
-        android:showAsAction="never" />
-    <item
-        android:id="@+id/reminder_settings"
-        android:title="@string/reminder_settings"
-        android:showAsAction="never" />
-    <item
         android:id="@+id/export_backup"
         android:title="@string/export_backup"
         android:showAsAction="never" />
